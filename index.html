@@ -59,7 +59,7 @@ button{cursor:pointer;border:none;background:none;padding:0;}
   background:rgba(10,10,10,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
   display:flex;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);}
 .tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:7px 2px 5px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.03em;
+  padding:7px 1px 5px;color:var(--muted);font-size:9.5px;font-weight:600;letter-spacing:.01em;
   border-radius:12px;min-height:var(--tap);}
 .tabbar button.on{color:var(--gold);background:var(--gold-soft);}
 .gwrap{position:relative;display:flex;align-items:center;justify-content:center;height:19px;}
@@ -212,6 +212,31 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .bars{margin-top:10px;}
 .bars .b{font-size:11px;color:var(--muted);}
 .bars .b + .b{margin-top:7px;}
+
+/* ask tab */
+.askwrap{display:flex;flex-direction:column;height:calc(100dvh - 62px - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
+.askscroll{flex:1;overflow-y:auto;padding:4px 2px 8px;display:flex;flex-direction:column;gap:12px;}
+.askintro{margin:auto;text-align:center;padding:20px 10px;}
+.askglyph{font-size:32px;color:var(--gold);margin-bottom:10px;}
+.asktitle{font-size:17px;font-weight:700;margin-bottom:8px;}
+.asksugs{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.asksug{text-align:left;padding:12px 14px;border-radius:12px;background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--border);color:var(--text);font-size:13.5px;font-weight:500;min-height:var(--tap);}
+.asksug:active{box-shadow:inset 0 0 0 1px var(--border2);}
+.askmsg{max-width:88%;}
+.askmsg.me{align-self:flex-end;background:var(--gold-soft);box-shadow:inset 0 0 0 1px var(--gold-line);
+  border-radius:14px 14px 4px 14px;padding:10px 13px;}
+.askmsg.ai{align-self:flex-start;width:100%;max-width:100%;}
+.aitag{font-size:10.5px;font-weight:700;color:var(--gold);letter-spacing:.06em;margin-bottom:5px;}
+.askbody{font-size:14.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;}
+.askmsg.me .askbody{white-space:pre-wrap;}
+.askbar{display:flex;gap:8px;padding:10px 0 0;border-top:1px solid var(--border);align-items:flex-end;}
+.askbar textarea{flex:1;max-height:120px;min-height:var(--tap);line-height:1.4;padding:11px 12px;}
+.dots{display:inline-flex;gap:4px;align-items:center;height:20px;}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.3s infinite;}
+.dots i:nth-child(2){animation-delay:.2s;}
+.dots i:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
@@ -1672,6 +1697,88 @@ function SettingsSheet({me, onClose, openMembers}){
   );
 }
 
+/* ── ask (AI over your WIOS data) ─────────────────────────── */
+function AskTab({me}){
+  const [msgs,setMsgs]=useState([]);   // {role:'user'|'assistant', content}
+  const [q,setQ]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState('');
+  const endRef=useRef(null);
+
+  const suggestions = me.is_admin
+    ? ['What did I do last week?','What did the team finish this month?','When did I last work on the loan package?','Which goals are still open?']
+    : ['What did I do last week?','What did I finish this month?','What am I waiting on?','Which goals are still open?'];
+
+  useEffect(()=>{ endRef.current&&endRef.current.scrollIntoView({block:'end'}); },[msgs,busy]);
+
+  async function ask(text){
+    const question=(text!==undefined?text:q).trim();
+    if(!question||busy) return;
+    setErr(''); setQ('');
+    const nextMsgs=[...msgs,{role:'user',content:question}];
+    setMsgs(nextMsgs); setBusy(true);
+    try{
+      const h=await authHeader();
+      if(!h) throw new Error('Sign in again.');
+      const res=await fetch('/.netlify/functions/ask',{
+        method:'POST', headers:{'Content-Type':'application/json',...h},
+        body: JSON.stringify({ question, history: msgs.slice(-8) }),
+      });
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error(data.error||'The AI did not respond.');
+      setMsgs([...nextMsgs,{role:'assistant',content:data.answer}]);
+    }catch(e){
+      setErr(e.message);
+      setMsgs(nextMsgs);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="askwrap">
+      <div className="askscroll">
+        {msgs.length===0&&(
+          <div className="askintro">
+            <div className="askglyph">✦</div>
+            <div className="asktitle">Ask about your work</div>
+            <div className="note" style={{textAlign:'center',maxWidth:300,margin:'0 auto 4px'}}>
+              {me.is_admin
+                ? 'Ask about anything recorded in WIOS, yours or the team\u2019s. Tasks, goals, daily habits, coop tasks.'
+                : 'Ask about anything you have recorded in WIOS. Tasks, goals, daily habits, coop tasks.'}
+            </div>
+            <div className="asksugs">
+              {suggestions.map((s,i)=>(
+                <button key={i} className="asksug" onClick={()=>ask(s)}>{s}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {msgs.map((m,i)=>(
+          <div key={i} className={'askmsg '+(m.role==='user'?'me':'ai')}>
+            {m.role==='assistant'&&<div className="aitag">✦ WIOS</div>}
+            <div className="askbody">{m.content}</div>
+          </div>
+        ))}
+        {busy&&(
+          <div className="askmsg ai">
+            <div className="aitag">✦ WIOS</div>
+            <div className="askbody"><span className="dots"><i/><i/><i/></span></div>
+          </div>
+        )}
+        {err&&<div className="err" style={{margin:'4px 2px'}}>{err}</div>}
+        <div ref={endRef}/>
+      </div>
+      <div className="askbar">
+        <textarea rows="1" placeholder="Ask about your work..." value={q}
+          onChange={e=>setQ(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); ask(); } }}/>
+        <button className="btn btn-gold btn-sm" style={{flex:'none',padding:'0 16px'}}
+          disabled={busy||!q.trim()} onClick={()=>ask()}>Ask</button>
+      </div>
+    </div>
+  );
+}
+
 /* ── app shell ───────────────────────────────────────────── */
 function App(){
   const [session,setSession]=useState(undefined);
@@ -1787,6 +1894,7 @@ function App(){
     {k:'coop',  l:'Coop',  g:'⇄', badge:coopBadge},
     {k:'goals', l:'Goals', g:'◎', badge:0},
     {k:'daily', l:'Daily', g:'↻', badge:0},
+    {k:'ask',   l:'Ask',   g:'✦', badge:0},
   ];
   if(me.is_admin) tabs.push({k:'team', l:'Team', g:'👥', badge:0});
 
@@ -1812,6 +1920,7 @@ function App(){
         {tab==='goals'&&<GoalsTab me={me} goals={goals} gps={gps} reload={load}
           goalType={goalType} setGoalType={setGoalType} tasks={tasks}/>}
         {tab==='daily'&&<DailyTab me={me} recs={recs} reload={load}/>}
+        {tab==='ask'&&<AskTab me={me}/>}
         {tab==='team'&&me.is_admin&&<TeamTab me={me} people={people} coops={coops} members={members}/>}
       </div>
 

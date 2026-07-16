@@ -141,7 +141,7 @@ exports.handler = async (event) => {
 <h1 style="font-size:24px;margin:0 0 8px;letter-spacing:.04em;">Welcome to WIOS</h1>
 <p style="color:#8A8480;font-size:14px;margin:0 0 24px;">Your leadership workspace account is ready, <strong style="color:#F0EDE8;">${name}</strong>.</p>
 <div style="background:#1E1E1E;border:1px solid #2E2E2E;border-radius:10px;padding:20px;margin-bottom:20px;">
-<div style="margin-bottom:14px;"><div style="font-size:11px;color:#8A8480;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Sign in at</div><div style="font-size:15px;font-weight:700;color:#CC9C3A;">https://wios.netlify.app</div></div>
+<div style="margin-bottom:14px;"><div style="font-size:11px;color:#8A8480;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Sign in at</div><div style="font-size:15px;font-weight:700;color:#CC9C3A;">https://wios5.netlify.app</div></div>
 <div style="margin-bottom:14px;"><div style="font-size:11px;color:#8A8480;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Email</div><div style="font-size:15px;font-weight:700;">${email}</div></div>
 <div><div style="font-size:11px;color:#8A8480;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Temporary password</div><div style="font-size:22px;font-weight:700;font-family:monospace;letter-spacing:.1em;color:#CC9C3A;">${tempPass}</div></div>
 </div>

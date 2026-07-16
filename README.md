@@ -23,12 +23,13 @@ works too.
    so re-running is safe.
    After it runs, delete the SQL file copy you kept, since it contains the
    starting password in plain text.
-2. New GitHub repo, push this folder. New Netlify site (wios.netlify.app).
+2. New GitHub repo, push this folder. New Netlify site (wios5.netlify.app).
 3. Generate push keys:  node tools/gen-vapid.mjs
 4. Netlify environment variables:
    - VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY  (from step 3)
    - SUPABASE_SERVICE_KEY                 (this new project's service_role key)
    - RESEND_API_KEY                       (same value uglyops uses, for member invites)
+   - ANTHROPIC_API_KEY                    (for the Ask tab)
 5. Deploy, confirm "Published", install to the Home Screen, turn on
    notifications per device.
 
@@ -43,6 +44,13 @@ before the @). If that account already exists it is linked; otherwise a new
 account is created and a temporary password is emailed. Roles are free text
 (CEO, CFO, whatever). Turning someone off keeps all their history.
 
+## Ask tab
+Ask questions in plain language about the work recorded in WIOS: tasks, goals,
+daily reminders, and coop tasks. It reads only what you are allowed to see.
+Admins can ask about the whole team, everyone else only their own records. It
+reads, it does not create or change anything. Runs on Claude Sonnet 5 and needs
+the ANTHROPIC_API_KEY environment variable.
+
 ## Files
 - index.html ................ the whole app
 - sw.js .................... service worker: push, click, badge
@@ -51,6 +59,7 @@ account is created and a temporary password is emailed. Roles are free text
 - netlify/functions/
   - notify.js ............. GET the VAPID key, POST a push
   - wios-members.js ....... add, edit and deactivate members (admin only)
+  - ask.js ................ answers questions about your WIOS data (Claude Sonnet)
   - cron.js ............... every 30 minutes
   - lib-push.js ........... push crypto + Supabase REST helper
 - tools/gen-vapid.mjs ...... one-time VAPID key generator
