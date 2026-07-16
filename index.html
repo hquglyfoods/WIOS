@@ -270,11 +270,11 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .card.task.dragging{opacity:.4;}
 .card.task.dragover{box-shadow:0 0 0 2px var(--gold);}
 .draghandle{flex:none;color:var(--muted2);font-size:18px;cursor:grab;padding:0 4px;touch-action:none;}
-.quickcheck{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;margin:-4px 2px -4px -2px;}
+.quickcheck{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;margin:-6px 0 -6px -8px;}
 .quickcheck .qc{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--border2);transition:all .15s;}
 .quickcheck:active .qc{box-shadow:inset 0 0 0 2px var(--gold);background:var(--gold-soft);}
-.trash{width:36px;height:36px;flex:none;display:flex;align-items:center;justify-content:center;
-  font-size:15px;opacity:.5;border-radius:9px;margin:-4px -6px -4px 0;}
+.trash{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-size:15px;opacity:.5;border-radius:10px;margin:-6px -8px -6px 0;}
 .trash:active{opacity:1;background:var(--panel2);}
 .notemark{font-size:12px;color:var(--muted2);}
 .chip.sub{background:var(--gold-soft);color:var(--gold);}
@@ -322,6 +322,8 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .pbtn{padding:11px 8px;border-radius:11px;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border2);
   font-size:13px;font-weight:600;color:var(--text);min-height:var(--tap);}
 .pbtn.on{background:var(--gold-soft);box-shadow:inset 0 0 0 2px var(--gold);color:var(--gold);}
+
+.lvl{font-size:10.5px;font-weight:700;border-radius:7px;padding:2px 8px;letter-spacing:.02em;}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
@@ -914,8 +916,8 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
               <div className={'tt'+(t.status==='done'?' done':'')}>{t.title}</div>
               <div className="meta">
                 {t.urgent&&<span className="chip urgent">Urgent</span>}
-                {t.reminded&&t.status==='active'&&<span className="chip back">Back</span>}
-                {t.is_system&&<span className="chip sys">Goals</span>}
+                {t.reminded&&t.status==='active'&&<span className="chip back">Followup</span>}
+                {t.is_system&&<span className="chip sys">{t.system_kind==='recurring'?'Recurring':'Goals'}</span>}
                 {subs.length>0&&<span className="chip sub">{subDone}/{subs.length}</span>}
                 {t.notes&&<span className="notemark" aria-label="Has notes">✎</span>}
                 {t.status==='active'&&<span className={'age'+(daysAgo(t.created_at)>=7?' old':'')}>
@@ -966,7 +968,7 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
                 onChange={e=>setDNotes(e.target.value)} onBlur={saveNotes}/>
               <div style={{height:14}}/>
 
-              {sel.is_system&&sel.system_ref&&(
+              {sel.is_system&&sel.system_kind==='goal_prompt'&&sel.system_ref&&(
                 <button className="opt" onClick={()=>{ const tp=sel.system_ref.split(':')[0]; setSel(null); gotoGoals(tp); }}>
                   <span className="g">🎯</span><span className="grow">Open Goals</span>
                 </button>
@@ -1698,55 +1700,100 @@ function TeamTab({me, people, coops, members}){
   const wk=periodKey('week'), mo=periodKey('month');
   const label=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
 
+  const now=Date.now();
+  const weekAgo=now-7*86400000, monthAgo=now-30*86400000;
+
   function stats(p){
     const t=data.tasks.filter(x=>x.owner_id===p.id);
-    const gW=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='week'&&x.period_key===wk&&
-      x.status!=='deleted'&&x.status!=='kept');
-    const gM=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='month'&&x.period_key===mo&&
-      x.status!=='deleted'&&x.status!=='kept');
+    const done=t.filter(x=>x.status==='done'&&x.completed_at);
+    const doneWeek=done.filter(x=>new Date(x.completed_at).getTime()>=weekAgo).length;
+    const doneMonth=done.filter(x=>new Date(x.completed_at).getTime()>=monthAgo).length;
+
+    // average time from created to completed (in days), last 30 days of completions
+    const spans=done
+      .filter(x=>new Date(x.completed_at).getTime()>=monthAgo)
+      .map(x=>(new Date(x.completed_at)-new Date(x.created_at))/86400000)
+      .filter(d=>d>=0);
+    const avgDays=spans.length?(spans.reduce((a,b)=>a+b,0)/spans.length):null;
+
+    // coop involvement this month (accepted or held)
+    const coopDoneMonth=coops.filter(c=>c.status==='closed'&&c.closed_at&&
+      new Date(c.closed_at).getTime()>=monthAgo&&
+      (c.holder_id===p.id||c.creator_id===p.id||members.some(m=>m.coop_id===c.id&&m.user_id===p.id&&m.status==='accepted'))).length;
+
+    const gW=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='week'&&x.period_key===wk&&x.status!=='deleted'&&x.status!=='kept');
+    const gM=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='month'&&x.period_key===mo&&x.status!=='deleted'&&x.status!=='kept');
     const rec=data.recs.filter(x=>x.owner_id===p.id&&x.active);
+
+    const active=t.filter(x=>x.status==='active').length;
+    const waiting=t.filter(x=>x.status==='waiting').length;
+
+    // stale = active tasks older than 7 days (being sat on)
+    const stale=t.filter(x=>x.status==='active'&&daysAgo(x.created_at)>=7).length;
+
+    // Activity level: recent throughput vs how much is being carried and how stale.
+    // Simple, transparent score out of 100. Not a verdict, a signal.
+    const throughput=Math.min(doneWeek*12, 60);           // up to 60 for finishing things
+    const goalPart=gW.length?Math.round(gW.filter(x=>x.status==='completed').length/gW.length*20):0; // up to 20
+    const recPart=Math.min(rec.reduce((a,x)=>Math.max(a,x.streak||0),0),20);  // up to 20 for keeping habits
+    const stalePenalty=Math.min(stale*8,30);
+    const score=Math.max(0,Math.min(100, throughput+goalPart+recPart-stalePenalty));
+    const level=score>=66?'Active':score>=33?'Steady':'Quiet';
+
     return {
-      active:t.filter(x=>x.status==='active').length,
-      waiting:t.filter(x=>x.status==='waiting').length,
+      active, waiting, stale,
       turn:coops.filter(c=>c.status==='active'&&c.holder_id===p.id).length,
+      doneWeek, doneMonth, coopDoneMonth,
+      avgDays,
       wPct:gW.length?Math.round(gW.filter(x=>x.status==='completed').length/gW.length*100):null,
       mPct:gM.length?Math.round(gM.filter(x=>x.status==='completed').length/gM.length*100):null,
       topStreak:rec.reduce((a,x)=>Math.max(a,x.streak||0),0),
+      score, level,
       tasks:t, goalsW:gW,
     };
   }
 
   return (
     <div>
-      <div className="note" style={{margin:'0 2px 12px'}}>Admin view. Only you can see this.</div>
+      <h3 style={{margin:'2px 2px 2px',fontSize:19}}>Team Performance</h3>
+      <div className="note" style={{margin:'0 2px 12px'}}>Admin view, only you can see this. Scores are a signal from recorded work, not a verdict.</div>
       {people.map(p=>{
         const s=stats(p); const isOpen=open===p.id;
         const acts=s.tasks.filter(x=>x.status==='active');
         const waits=s.tasks.filter(x=>x.status==='waiting');
         const cps=coops.filter(c=>c.status==='active'&&(c.holder_id===p.id||c.creator_id===p.id||
           members.some(m=>m.coop_id===c.id&&m.user_id===p.id&&m.status!=='declined')));
+        const lvlColor=s.level==='Active'?'var(--green)':s.level==='Steady'?'var(--gold)':'var(--muted)';
         return (
           <div key={p.id} className="card tapme" onClick={()=>setOpen(isOpen?null:p.id)}>
             <div className="row">
               <div className="grow">
                 <div className="tt" style={{fontSize:15}}>{p.name}</div>
+                <div className="meta">
+                  <span className="chip role">{p.role}</span>
+                  <span className="lvl" style={{color:lvlColor,boxShadow:`inset 0 0 0 1px ${lvlColor}`}}>{s.level}</span>
+                  {s.stale>0&&<span className="chip urgent">{s.stale} stale</span>}
+                </div>
               </div>
-              <span className="chip role">{p.role}</span>
               {s.turn>0&&<span className="ball"/>}
               {s.topStreak>0&&<span className="streak">🔥 {s.topStreak}</span>}
               <span style={{color:'var(--muted2)',flex:'none'}}>{isOpen?'▾':'▸'}</span>
             </div>
             <div className="kv">
-              <div><div className="v">{s.active}</div><div className="k">Active</div></div>
-              <div><div className="v">{s.waiting}</div><div className="k">Waiting</div></div>
-              <div><div className="v">{s.turn}</div><div className="k">Their turn</div></div>
+              <div><div className="v">{s.doneWeek}</div><div className="k">Done this week</div></div>
+              <div><div className="v">{s.doneMonth}</div><div className="k">Done this month</div></div>
+              <div><div className="v">{s.avgDays===null?'--':(s.avgDays<1?'<1d':Math.round(s.avgDays)+'d')}</div><div className="k">Avg to finish</div></div>
             </div>
-            {(s.wPct!==null||s.mPct!==null)&&(
-              <div className="bars">
-                {s.wPct!==null&&<div className="b">Week goals {s.wPct}%<div className="pct"><i style={{width:s.wPct+'%'}}/></div></div>}
-                {s.mPct!==null&&<div className="b">Month goals {s.mPct}%<div className="pct"><i style={{width:s.mPct+'%'}}/></div></div>}
-              </div>
-            )}
+            <div className="kv">
+              <div><div className="v">{s.active}</div><div className="k">Active now</div></div>
+              <div><div className="v">{s.waiting}</div><div className="k">Waiting</div></div>
+              <div><div className="v">{s.coopDoneMonth}</div><div className="k">Coops closed</div></div>
+            </div>
+            <div className="bars">
+              <div className="b">Activity {s.score}<div className="pct"><i style={{width:s.score+'%',background:lvlColor}}/></div></div>
+              {s.wPct!==null&&<div className="b">Week goals {s.wPct}%<div className="pct"><i style={{width:s.wPct+'%'}}/></div></div>}
+              {s.mPct!==null&&<div className="b">Month goals {s.mPct}%<div className="pct"><i style={{width:s.mPct+'%'}}/></div></div>}
+            </div>
             {isOpen&&(
               <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
                 <div className="lbl">Active</div>
@@ -2334,7 +2381,7 @@ function App(){
   const tabs=[
     {k:'tasks', l:'Tasks', badge:coopBadge+remindedN},
     {k:'goals', l:'Goals', badge:0},
-    {k:'daily', l:'Daily', badge:0},
+    {k:'daily', l:'Recurring', badge:0},
     {k:'ask',   l:'Ask',   badge:0},
   ];
   if(me.is_admin) tabs.push({k:'team', l:'Team', badge:0});

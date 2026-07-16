@@ -108,11 +108,32 @@ exports.handler = async () => {
     for (const r of recs) {
       if (!recurringDueToday(r, et)) continue;
       if (r.last_done_date === et.dateStr) continue;   // already done today
-      if (r.last_pushed_date === et.dateStr) continue; // already pushed today
+      if (r.last_pushed_date === et.dateStr) continue; // already handled today
       if ((r.time_hhmm || '09:00') > et.hhmm) continue; // not yet time
-      await pushToUsers([r.owner_id], {
-        title: 'Daily reminder', body: r.title, tag: 'wios-rec', url: '/',
-      }, env);
+
+      // Drop a real task card in the owner's Active list (one per recurring per day),
+      // then push about that exact card. Push only fires when a new card was created,
+      // so the notification always matches something actually on their list.
+      const sysRef = `rec:${r.id}:${et.dateStr}`;
+      const exists = await sb(`wios_tasks?owner_id=eq.${r.owner_id}&system_ref=eq.${encodeURIComponent(sysRef)}&select=id`);
+      let created = false;
+      if (!exists.length) {
+        try {
+          await sb('wios_tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+              owner_id: r.owner_id, title: r.title, status: 'active',
+              is_system: true, system_kind: 'recurring', system_ref: sysRef,
+            }),
+          });
+          created = true;
+        } catch (e) { /* unique guard raced: card already exists, fine */ }
+      }
+      if (created || !exists.length) {
+        await pushToUsers([r.owner_id], {
+          title: 'Recurring task is due', body: r.title, tag: 'wios-rec-' + r.id, url: '/', kind: 'task',
+        }, env);
+      }
       await sb(`wios_recurrings?id=eq.${r.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ last_pushed_date: et.dateStr }),
