@@ -50,11 +50,25 @@ exports.handler = async (event) => {
 
     const title = String(payload.title || 'WIOS').slice(0, 120);
     const body = String(payload.body || '').slice(0, 300);
+    const coopId = payload.coopId || null;
+    const kind = payload.kind || (coopId ? 'coop' : 'task');
+
+    // in-app notification feed: one row per recipient
+    try {
+      await sb('wios_notifications', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify(to.map((uid) => ({
+          user_id: uid, title, body, kind, coop_id: coopId,
+        }))),
+      });
+    } catch (e) { console.error('notif insert', e.message); }
+
     const sent = await pushToUsers(to, {
       title, body,
       tag: payload.tag || 'wios',
-      url: '/',
-      coopId: payload.coopId || null,
+      url: coopId ? `/?coop=${coopId}` : '/',
+      coopId,
     }, env);
 
     return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ sent }) };

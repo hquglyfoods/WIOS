@@ -23,9 +23,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const data = event.notification.data || {};
+  const coopId = data.coopId || null;
+  const url = data.url || '/';
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of all) { if ('focus' in c) { await c.focus(); return; } }
-    if (self.clients.openWindow) await self.clients.openWindow('/');
+    for (const c of all) {
+      if ('focus' in c) {
+        await c.focus();
+        if (coopId) c.postMessage({ type: 'wios-open', coopId });
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(url);
   })());
 });

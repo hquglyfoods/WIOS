@@ -39,6 +39,7 @@ create table if not exists public.wios_tasks (
   system_kind text,                          -- 'goal_prompt'
   system_ref text,                           -- e.g. 'week:2026-07-13'
   sort_order double precision,               -- manual ordering within Active (lower = higher up)
+  subtasks jsonb not null default '[]'::jsonb, -- [{id, text, done}]
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
@@ -47,6 +48,7 @@ create unique index if not exists wios_tasks_sysref_uq
   on public.wios_tasks(owner_id, system_ref) where system_ref is not null;
 -- upgrade path for an earlier install
 alter table public.wios_tasks add column if not exists sort_order double precision;
+alter table public.wios_tasks add column if not exists subtasks jsonb not null default '[]'::jsonb;
 
 -- ── 3. Coop tasks (relay / baton model) ─────────────────────
 create table if not exists public.wios_coops (
@@ -149,6 +151,19 @@ create table if not exists public.wios_push_subs (
   created_at timestamptz not null default now()
 );
 
+-- in-app notification feed (mirrors every push we send)
+create table if not exists public.wios_notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.wios_profiles(id) on delete cascade,
+  title text not null,
+  body text,
+  kind text,                                 -- 'coop' | 'task' | 'goal' | ...
+  coop_id uuid,                              -- deep-link target when relevant
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists wios_notif_idx on public.wios_notifications(user_id, created_at desc);
+
 -- ============================================================
 -- Helpers (security definer avoids RLS policy recursion)
 -- ============================================================
@@ -185,6 +200,7 @@ alter table public.wios_goal_periods enable row level security;
 alter table public.wios_recurrings enable row level security;
 alter table public.wios_recurring_logs enable row level security;
 alter table public.wios_push_subs enable row level security;
+alter table public.wios_notifications enable row level security;
 
 -- profiles: every active WIOS user sees the roster (needed to address teammates).
 -- Members are added and deactivated by the wios-members function using the
@@ -289,6 +305,10 @@ create policy wios_rlog_delete on public.wios_recurring_logs
 
 drop policy if exists wios_push_all on public.wios_push_subs;
 create policy wios_push_all on public.wios_push_subs
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists wios_notif_all on public.wios_notifications;
+create policy wios_notif_all on public.wios_notifications
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- retire the old helper name if an earlier install created it
