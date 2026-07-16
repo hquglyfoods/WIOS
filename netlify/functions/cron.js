@@ -89,6 +89,20 @@ exports.handler = async () => {
       report.scheduled++;
     }
 
+    // ── 2b. Coop pass reminders (nudge whoever the ball is with) ──
+    const coopsDue = await sb(`wios_coops?status=eq.active&reminded=eq.false&remind_at=lte.${encodeURIComponent(nowIso)}&select=id,title,holder_id,pending_id`);
+    for (const c of coopsDue) {
+      const who = c.holder_id || c.pending_id;
+      if (who) {
+        await pushToUsers([who], {
+          title: 'Still waiting on you', body: c.title, tag: 'wios-coop-remind',
+          url: `/?coop=${c.id}`, coopId: c.id,
+        }, env);
+      }
+      await sb(`wios_coops?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ reminded: true }) });
+      report.coopReminders = (report.coopReminders || 0) + 1;
+    }
+
     // ── 3. Recurring reminders ──────────────────────────────
     const recs = await sb('wios_recurrings?active=eq.true&select=*');
     for (const r of recs) {

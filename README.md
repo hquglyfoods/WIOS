@@ -17,7 +17,7 @@ The app adds @uglydonutsncorndogs.com behind the scenes. A full email still
 works too.
 
 ## Setup, once
-1. In the Supabase SQL editor, run wios_schema.sql top to bottom. It builds
+1. In the Supabase SQL editor, run 01_wios_schema.sql top to bottom. It builds
    every table, all the RLS, AND creates the 5 founder accounts with the
    shared password Djrmffl202!. Nothing to fill in. The file is idempotent,
    so re-running is safe.
@@ -75,7 +75,7 @@ it is. On the login screen anyone can use Forgot password to get a reset email.
   - lib-push.js ........... push crypto + Supabase REST helper
 - tools/gen-vapid.mjs ...... one-time VAPID key generator
 - icons/ .................. app icons
-- wios_schema.sql ......... schema, RLS, and the 5 founder accounts
+- 01_wios_schema.sql ......... schema, RLS, and the 5 founder accounts
 
 The cron runs every 30 minutes: waiting reminders, tasks set aside for later,
 daily reminders, and new goal-period prompts all land within 30 minutes.
