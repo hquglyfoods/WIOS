@@ -51,6 +51,17 @@ Admins can ask about the whole team, everyone else only their own records. It
 reads, it does not create or change anything. Runs on Claude Sonnet 5 and needs
 the ANTHROPIC_API_KEY environment variable.
 
+## Tasks
+Each active task shows how long it has been carried (day 2, day 3, ...), and
+anything a week or older is flagged in red, so it is obvious when a task is
+being sat on. Tap Reorder to drag priorities up or down by hand; Reset returns
+to the automatic order (urgent first, then newest).
+
+## Members and passwords (admin)
+Settings, then Members. Add or edit people, toggle admin, turn access on or off.
+In a member's edit screen you can set their password directly and tell them what
+it is. On the login screen anyone can use Forgot password to get a reset email.
+
 ## Files
 - index.html ................ the whole app
 - sw.js .................... service worker: push, click, badge

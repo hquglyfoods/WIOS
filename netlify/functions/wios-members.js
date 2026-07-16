@@ -88,6 +88,23 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
+    // ── set a member's password (admin) ──
+    if (action === 'setPassword') {
+      const pw = String(body.password || '');
+      if (pw.length < 8) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Password must be at least 8 characters.' }) };
+      }
+      const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${body.userId}`, {
+        method: 'PUT', headers: svc(env),
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!upd.ok) {
+        const t = await upd.text();
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Could not set the password. ' + t }) };
+      }
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
     // ── add a member ──
     if (action !== 'add') return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action.' }) };
 

@@ -38,12 +38,15 @@ create table if not exists public.wios_tasks (
   is_system boolean not null default false,  -- goal prompt tasks
   system_kind text,                          -- 'goal_prompt'
   system_ref text,                           -- e.g. 'week:2026-07-13'
+  sort_order double precision,               -- manual ordering within Active (lower = higher up)
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
 create index if not exists wios_tasks_owner_idx on public.wios_tasks(owner_id, status);
 create unique index if not exists wios_tasks_sysref_uq
   on public.wios_tasks(owner_id, system_ref) where system_ref is not null;
+-- upgrade path for an earlier install
+alter table public.wios_tasks add column if not exists sort_order double precision;
 
 -- ── 3. Coop tasks (relay / baton model) ─────────────────────
 create table if not exists public.wios_coops (

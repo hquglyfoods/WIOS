@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>WIOS</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#0E0E0E">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WIOS">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,28 +23,29 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').c
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#0E0E0E;--panel:#181818;--panel2:#1F1F1F;--border:#2A2A2A;--border2:#3A3A3A;
-  --text:#F0EDE8;--muted:#8A8480;--muted2:#5E5A56;
-  --gold:#CC9C3A;--gold-soft:rgba(204,156,58,.14);--gold-line:rgba(204,156,58,.35);
-  --red:#E05252;--green:#5FB87A;--blue:#5B8FD4;--purple:#9B78D4;
+  /* clean light + teamwork blue. names kept (gold->blue) so all rules inherit */
+  --bg:#F4F7FB;--panel:#FFFFFF;--panel2:#F0F4F9;--border:#E1E8F0;--border2:#CCD8E6;
+  --text:#1A2A3A;--muted:#6B7C8F;--muted2:#9AAABB;
+  --gold:#2E6FD6;--gold-soft:rgba(46,111,214,.10);--gold-line:rgba(46,111,214,.40);
+  --red:#E0574F;--green:#27A567;--blue:#2E6FD6;--purple:#7A5CD0;
   --tap:44px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;background:#080808;overscroll-behavior-y:none;}
+html,body{margin:0;padding:0;background:#E7EDF4;overscroll-behavior-y:none;}
 body{font-family:'Inter',-apple-system,system-ui,sans-serif;color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;}
 #shell{max-width:480px;margin:0 auto;min-height:100dvh;background:var(--bg);position:relative;}
-@media(min-width:520px){#shell{border-left:1px solid #1C1C1C;border-right:1px solid #1C1C1C;}}
+@media(min-width:520px){#shell{border-left:1px solid #DCE4EE;border-right:1px solid #DCE4EE;}}
 input,select,textarea,button{font-family:inherit;font-size:15px;color:var(--text);}
-input,select,textarea{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+input,select,textarea{background:var(--panel);border:1px solid var(--border2);border-radius:10px;
   padding:12px;width:100%;outline:none;min-height:var(--tap);}
-input:focus,select:focus,textarea:focus{border-color:var(--gold-line);}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 textarea{resize:none;}
 button{cursor:pointer;border:none;background:none;padding:0;}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
 
 /* header */
-.hdr{position:sticky;top:0;z-index:30;background:rgba(14,14,14,.94);backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;
+.hdr{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;box-shadow:0 1px 3px rgba(26,42,58,.04);
   display:flex;align-items:center;gap:8px;}
 .wordmark{font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:.06em;color:var(--gold);
   font-weight:700;line-height:1.1;}
@@ -56,8 +57,8 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 
 /* tab bar */
 .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:40;
-  background:rgba(10,10,10,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
-  display:flex;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);}
+  background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
+  display:flex;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);box-shadow:0 -1px 6px rgba(26,42,58,.05);}
 .tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:7px 1px 5px;color:var(--muted);font-size:9.5px;font-weight:600;letter-spacing:.01em;
   border-radius:12px;min-height:var(--tap);}
@@ -65,8 +66,8 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .gwrap{position:relative;display:flex;align-items:center;justify-content:center;height:19px;}
 .gwrap .glyph{font-size:17px;line-height:1;}
 .gwrap .bdg{position:absolute;top:-5px;left:calc(50% + 5px);min-width:17px;height:17px;border-radius:9px;
-  background:var(--gold);color:#0E0E0E;font-size:10px;font-weight:700;display:flex;align-items:center;
-  justify-content:center;padding:0 4px;border:2px solid #0A0A0A;}
+  background:var(--gold);color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;padding:0 4px;border:2px solid #FFFFFF;}
 
 /* segmented control */
 .seg{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:12px;}
@@ -75,8 +76,9 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .seg button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2);}
 
 /* cards */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:9px;}
-.card.turn{border-color:var(--gold-line);background:linear-gradient(180deg,rgba(204,156,58,.09),var(--panel));}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:9px;
+  box-shadow:0 1px 2px rgba(26,42,58,.04);}
+.card.turn{border-color:var(--gold-line);background:linear-gradient(180deg,rgba(46,111,214,.07),var(--panel));}
 .card.tapme:active{border-color:var(--border2);}
 .row{display:flex;align-items:center;gap:10px;}
 .grow{flex:1;min-width:0;}
@@ -94,7 +96,7 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .chip.off{background:rgba(138,132,128,.14);color:var(--muted);}
 
 /* the ball: whose turn it is */
-.ball{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(204,156,58,.8);
+.ball{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(46,111,214,.6);
   animation:pulse 1.7s ease-in-out infinite;flex:none;}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.6}}
 
@@ -105,8 +107,8 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 /* buttons */
 .btn{border-radius:11px;padding:12px 14px;font-weight:600;font-size:14px;text-align:center;
   min-height:var(--tap);display:flex;align-items:center;justify-content:center;gap:5px;}
-.btn-gold{background:var(--gold);color:#141414;}
-.btn-gold:active{background:#B98A2E;}
+.btn-gold{background:var(--gold);color:#FFFFFF;box-shadow:0 1px 3px rgba(46,111,214,.3);}
+.btn-gold:active{background:#2559AE;}
 .btn-line{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2);}
 .btn-ghost{color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1px var(--border);}
 .btn-red{background:rgba(224,82,82,.12);color:var(--red);box-shadow:inset 0 0 0 1px rgba(224,82,82,.3);}
@@ -172,7 +174,7 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .ctap{width:var(--tap);height:var(--tap);flex:none;display:flex;align-items:center;justify-content:center;}
 .gcheck{width:27px;height:27px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--border2);
   display:flex;align-items:center;justify-content:center;font-size:14px;color:transparent;transition:all .18s;}
-.gcheck.on{background:var(--gold);box-shadow:inset 0 0 0 2px var(--gold);color:#141414;}
+.gcheck.on{background:var(--gold);box-shadow:inset 0 0 0 2px var(--gold);color:#FFFFFF;}
 .xbtn{width:36px;height:36px;flex:none;display:flex;align-items:center;justify-content:center;
   color:var(--muted2);font-size:17px;border-radius:9px;}
 .xbtn:active{background:var(--panel2);}
@@ -238,6 +240,16 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .dots i:nth-child(3){animation-delay:.4s;}
 @keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
 
+/* task sorting + age */
+.sortbar{display:flex;align-items:center;gap:8px;margin:0 2px 10px;}
+.movecol{display:flex;flex-direction:column;gap:4px;flex:none;margin-right:2px;}
+.movebtn{width:34px;height:26px;border-radius:7px;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border2);
+  color:var(--gold);font-size:11px;display:flex;align-items:center;justify-content:center;}
+.movebtn:active{background:var(--gold-soft);}
+.movebtn:disabled{opacity:.3;color:var(--muted2);}
+.age{font-size:11px;color:var(--muted);font-weight:600;}
+.age.old{color:var(--red);}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -288,6 +300,11 @@ function fmtShort(ts){ if(!ts)return''; const d=new Date(ts);
   return `${MON[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
 function fmtDay(ts){ if(!ts)return''; const d=new Date(ts); return `${MON[d.getMonth()]} ${d.getDate()}`; }
 function daysAgo(ts){ if(!ts)return 0; return Math.max(0, Math.floor((Date.now()-new Date(ts))/86400000)); }
+function ageLabel(ts){ const d=daysAgo(ts);
+  if(d===0) return 'added today';
+  if(d===1) return 'day 2';           // on its 2nd day
+  return `day ${d+1}`;                // day 3, day 4, ... shows how long it has been carried
+}
 function inWords(ts){ if(!ts) return ''; const ms=new Date(ts)-Date.now(); if(ms<=0) return 'any moment';
   const h=Math.round(ms/3600000); if(h<24) return `in ${h||1}h`; return `in ${Math.round(h/24)}d`; }
 function lastDayOfMonth(y,m){ return new Date(y,m,0).getDate(); }
@@ -391,11 +408,21 @@ function toEmail(idOrEmail){
 function Login(){
   const [uid,setUid]=useState(''); const [pw,setPw]=useState('');
   const [busy,setBusy]=useState(false); const [err,setErr]=useState('');
+  const [mode,setMode]=useState('in');   // 'in' | 'forgot'
+  const [sent,setSent]=useState(false);
   async function go(){
     if(busy||!uid.trim()||!pw) return;
     setBusy(true); setErr('');
     const {error}=await sb.auth.signInWithPassword({email:toEmail(uid), password:pw});
     if(error) setErr('That ID or password did not work. Check and try again.');
+    setBusy(false);
+  }
+  async function recover(){
+    if(busy||!uid.trim()) return;
+    setBusy(true); setErr(''); setSent(false);
+    const {error}=await sb.auth.resetPasswordForEmail(toEmail(uid), {redirectTo: window.location.origin});
+    if(error) setErr(error.message);
+    else setSent(true);
     setBusy(false);
   }
   return (
@@ -406,18 +433,44 @@ function Login(){
           Ugly Donuts &amp; Corn Dogs
         </div>
       </div>
-      <input placeholder="ID (e.g. john.kim)" type="text" autoCapitalize="none" autoCorrect="off"
-        spellCheck="false" autoComplete="username" value={uid}
-        onChange={e=>setUid(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
-      <input placeholder="Password" type="password" autoComplete="current-password" value={pw}
-        onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
-      {err&&<div className="err">{err}</div>}
-      <button className="btn btn-gold" disabled={busy||!uid.trim()||!pw} onClick={go}>
-        {busy?'Signing in...':'Sign in'}
-      </button>
-      <div className="note" style={{textAlign:'center',marginTop:6}}>
-        Your ID is the part before the @ in your email.
-      </div>
+      {mode==='in'?(
+        <>
+          <input placeholder="ID (e.g. john.kim)" type="text" autoCapitalize="none" autoCorrect="off"
+            spellCheck="false" autoComplete="username" value={uid}
+            onChange={e=>setUid(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
+          <input placeholder="Password" type="password" autoComplete="current-password" value={pw}
+            onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
+          {err&&<div className="err">{err}</div>}
+          <button className="btn btn-gold" disabled={busy||!uid.trim()||!pw} onClick={go}>
+            {busy?'Signing in...':'Sign in'}
+          </button>
+          <button className="btn btn-ghost" onClick={()=>{setMode('forgot');setErr('');setSent(false);}}>
+            Forgot password
+          </button>
+          <div className="note" style={{textAlign:'center',marginTop:6}}>
+            Your ID is the part before the @ in your email.
+          </div>
+        </>
+      ):(
+        <>
+          <div className="note" style={{marginBottom:4}}>
+            Enter your ID and we will email you a reset link.
+          </div>
+          <input placeholder="ID (e.g. john.kim)" type="text" autoCapitalize="none" autoCorrect="off"
+            spellCheck="false" value={uid} onChange={e=>setUid(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&recover()}/>
+          {err&&<div className="err">{err}</div>}
+          {sent&&<div className="note" style={{color:'var(--green)'}}>
+            If that account exists, a reset link is on its way to {toEmail(uid)}. Check your email.
+          </div>}
+          <button className="btn btn-gold" disabled={busy||!uid.trim()} onClick={recover}>
+            {busy?'Sending...':'Send reset link'}
+          </button>
+          <button className="btn btn-ghost" onClick={()=>{setMode('in');setErr('');}}>
+            Back to sign in
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -432,11 +485,21 @@ function TasksTab({me, people, tasks, coopsMyTurn, reload, gotoGoals, gotoCoop})
   const [schedAt,setSchedAt]=useState('');
   const [sendTo,setSendTo]=useState(null); const [sendMsg,setSendMsg]=useState('');
   const [busy,setBusy]=useState(false);
+  const [sortMode,setSortMode]=useState(false);
 
   const lists=useMemo(()=>{
     const by={active:[],waiting:[],scheduled:[],done:[]};
     tasks.forEach(t=>{ (by[t.status]||by.active).push(t); });
-    by.active.sort((a,b)=>(b.urgent-a.urgent)||(b.reminded-a.reminded)||(new Date(b.created_at)-new Date(a.created_at)));
+    // Active: manual order first (sort_order), then urgent, then reminded, then newest.
+    // A task with a sort_order set always sits where the user put it.
+    by.active.sort((a,b)=>{
+      const ao=a.sort_order, bo=b.sort_order;
+      const aHas=ao!==null&&ao!==undefined, bHas=bo!==null&&bo!==undefined;
+      if(aHas&&bHas) return ao-bo;
+      if(aHas) return -1;
+      if(bHas) return 1;
+      return (b.urgent-a.urgent)||(b.reminded-a.reminded)||(new Date(b.created_at)-new Date(a.created_at));
+    });
     by.waiting.sort((a,b)=>new Date(a.remind_at||0)-new Date(b.remind_at||0));
     by.scheduled.sort((a,b)=>new Date(a.scheduled_at||0)-new Date(b.scheduled_at||0));
     by.done.sort((a,b)=>new Date(b.completed_at||0)-new Date(a.completed_at||0));
@@ -448,6 +511,25 @@ function TasksTab({me, people, tasks, coopsMyTurn, reload, gotoGoals, gotoCoop})
     const title=quick.trim(); if(!title) return;
     setQuick('');
     await sb.from('wios_tasks').insert({owner_id:me.id, title, status:'active'});
+    reload();
+  }
+
+  // Reorder within the active list. Rewrites sort_order for all active tasks
+  // so the manual order sticks, then reloads.
+  async function move(task, dir){
+    const arr=lists.active.slice();
+    const i=arr.findIndex(t=>t.id===task.id);
+    const j=i+dir;
+    if(i<0||j<0||j>=arr.length) return;
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+    await Promise.all(arr.map((t,idx)=>
+      sb.from('wios_tasks').update({sort_order:idx}).eq('id',t.id)));
+    reload();
+  }
+  async function clearManualOrder(){
+    await Promise.all(lists.active.map(t=>
+      sb.from('wios_tasks').update({sort_order:null}).eq('id',t.id)));
+    setSortMode(false);
     reload();
   }
   async function patch(t, fields){
@@ -511,7 +593,26 @@ function TasksTab({me, people, tasks, coopsMyTurn, reload, gotoGoals, gotoCoop})
           onKeyDown={e=>e.key==='Enter'&&addQuick()}/>
         <button className="btn btn-gold" onClick={addQuick} aria-label="Add task">+</button>
       </div>
-      <Seg items={segItems} value={seg} onChange={setSeg}/>
+      <Seg items={segItems} value={seg} onChange={v=>{setSeg(v); if(v!=='active') setSortMode(false);}}/>
+
+      {seg==='active'&&lists.active.length>1&&(
+        <div className="sortbar">
+          {sortMode?(
+            <>
+              <span className="note" style={{flex:1}}>Use the arrows to reorder. Top is highest priority.</span>
+              <button className="btn btn-ghost btn-sm" style={{flex:'none',padding:'0 12px'}} onClick={clearManualOrder}>Reset</button>
+              <button className="btn btn-gold btn-sm" style={{flex:'none',padding:'0 14px'}} onClick={()=>setSortMode(false)}>Done</button>
+            </>
+          ):(
+            <>
+              <span className="note" style={{flex:1}}>Sorted by urgency, then newest.</span>
+              <button className="btn btn-line btn-sm" style={{flex:'none',padding:'0 14px'}} onClick={()=>setSortMode(true)}>
+                Reorder
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {lists[seg].length===0&&(
         <div className="empty">
@@ -522,22 +623,30 @@ function TasksTab({me, people, tasks, coopsMyTurn, reload, gotoGoals, gotoCoop})
         </div>
       )}
 
-      {lists[seg].map(t=>(
-        <div key={t.id} className="card tapme" onClick={()=>openSheet(t)}>
+      {lists[seg].map((t,idx)=>(
+        <div key={t.id} className="card tapme" onClick={()=>!sortMode&&openSheet(t)}>
           <div className="row">
+            {sortMode&&seg==='active'&&(
+              <div className="movecol" onClick={e=>e.stopPropagation()}>
+                <button className="movebtn" disabled={idx===0} onClick={()=>move(t,-1)} aria-label="Move up">▲</button>
+                <button className="movebtn" disabled={idx===lists.active.length-1} onClick={()=>move(t,1)} aria-label="Move down">▼</button>
+              </div>
+            )}
             <div className="grow">
               <div className={'tt'+(t.status==='done'?' done':'')}>{t.title}</div>
               <div className="meta">
                 {t.urgent&&<span className="chip urgent">Urgent</span>}
                 {t.reminded&&t.status==='active'&&<span className="chip back">Back</span>}
                 {t.is_system&&<span className="chip sys">Goals</span>}
+                {t.status==='active'&&<span className={'age'+(daysAgo(t.created_at)>=7?' old':'')}>
+                  {ageLabel(t.created_at)}</span>}
                 {t.status==='waiting'&&
                   <span>{daysAgo(t.waiting_since||t.created_at)}d waiting, back {inWords(t.remind_at)}</span>}
                 {t.status==='scheduled'&&<span>Starts {fmtShort(t.scheduled_at)}</span>}
                 {t.status==='done'&&<span>Done {fmtDay(t.completed_at)}</span>}
               </div>
             </div>
-            {t.urgent&&t.status!=='done'&&<span style={{color:'var(--gold)',fontSize:15,flex:'none'}}>★</span>}
+            {!sortMode&&t.urgent&&t.status!=='done'&&<span style={{color:'var(--gold)',fontSize:15,flex:'none'}}>★</span>}
           </div>
         </div>
       ))}
@@ -1449,9 +1558,22 @@ function MembersSheet({me, people, onClose, reload}){
   const [f,setF]=useState({email:'',name:'',role:'',isAdmin:false});
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(''); const [ok,setOk]=useState('');
+  const [newPw,setNewPw]=useState('');
 
   function startAdd(){ setF({email:'',name:'',role:'',isAdmin:false}); setErr(''); setOk(''); setMode('add'); }
-  function startEdit(p){ setTarget(p); setF({email:'',name:p.name,role:p.role,isAdmin:p.is_admin}); setErr(''); setOk(''); setMode('edit'); }
+  function startEdit(p){ setTarget(p); setF({email:'',name:p.name,role:p.role,isAdmin:p.is_admin}); setNewPw(''); setErr(''); setOk(''); setMode('edit'); }
+
+  async function setPassword(){
+    if(busy) return;
+    if(newPw.length<8){ setErr('Password must be at least 8 characters.'); return; }
+    setBusy(true); setErr(''); setOk('');
+    try{
+      await callMembers({action:'setPassword', userId:target.id, password:newPw});
+      setOk(`${target.name}'s password is set. Share it with them: ${newPw}`);
+      setNewPw('');
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
 
   async function add(){
     if(busy) return; setBusy(true); setErr(''); setOk('');
@@ -1553,15 +1675,28 @@ function MembersSheet({me, people, onClose, reload}){
           </button>
         )}
         {err&&<div className="err" style={{marginBottom:8}}>{err}</div>}
+        {ok&&<div className="note" style={{color:'var(--green)',marginBottom:8}}>{ok}</div>}
         <button className="btn btn-gold" style={{width:'100%'}}
           disabled={busy||!f.name.trim()||!f.role.trim()} onClick={save}>
           {busy?'Saving...':'Save'}
         </button>
+
+        <div className="lbl" style={{marginTop:18}}>Set their password</div>
+        <div className="note" style={{marginBottom:8}}>
+          Give {first(target.name)} a new password. Tell them what it is, and they can change it later.
+        </div>
+        <div className="row" style={{gap:8}}>
+          <input type="text" placeholder="New password" autoCapitalize="none" autoCorrect="off"
+            spellCheck="false" value={newPw} onChange={e=>setNewPw(e.target.value)}/>
+          <button className="btn btn-line btn-sm" style={{flex:'none',padding:'0 14px'}}
+            disabled={busy||newPw.length<8} onClick={setPassword}>Set</button>
+        </div>
+
         {target.id!==me.id&&(
           target.active
-            ? <button className="btn btn-red" style={{width:'100%',marginTop:8}} disabled={busy}
+            ? <button className="btn btn-red" style={{width:'100%',marginTop:14}} disabled={busy}
                 onClick={()=>setActive(target,false)}>Turn off WIOS access</button>
-            : <button className="btn btn-line" style={{width:'100%',marginTop:8}} disabled={busy}
+            : <button className="btn btn-line" style={{width:'100%',marginTop:14}} disabled={busy}
                 onClick={()=>setActive(target,true)}>Turn access back on</button>
         )}
         <button className="btn btn-ghost" style={{width:'100%',marginTop:8}} onClick={()=>setMode('list')}>Back</button>
