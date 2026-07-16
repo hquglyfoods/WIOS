@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WIOS</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0E0E0E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WIOS">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap">
+<script>
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0E0E0E;--panel:#181818;--panel2:#1F1F1F;--border:#2A2A2A;--border2:#3A3A3A;
+  --text:#F0EDE8;--muted:#8A8480;--muted2:#5E5A56;
+  --gold:#CC9C3A;--gold-soft:rgba(204,156,58,.14);--gold-line:rgba(204,156,58,.35);
+  --red:#E05252;--green:#5FB87A;--blue:#5B8FD4;--purple:#9B78D4;
+  --tap:44px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:#080808;overscroll-behavior-y:none;}
+body{font-family:'Inter',-apple-system,system-ui,sans-serif;color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;}
+#shell{max-width:480px;margin:0 auto;min-height:100dvh;background:var(--bg);position:relative;}
+@media(min-width:520px){#shell{border-left:1px solid #1C1C1C;border-right:1px solid #1C1C1C;}}
+input,select,textarea,button{font-family:inherit;font-size:15px;color:var(--text);}
+input,select,textarea{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:12px;width:100%;outline:none;min-height:var(--tap);}
+input:focus,select:focus,textarea:focus{border-color:var(--gold-line);}
+textarea{resize:none;}
+button{cursor:pointer;border:none;background:none;padding:0;}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
+
+/* header */
+.hdr{position:sticky;top:0;z-index:30;background:rgba(14,14,14,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;
+  display:flex;align-items:center;gap:8px;}
+.wordmark{font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:.06em;color:var(--gold);
+  font-weight:700;line-height:1.1;}
+.hdr .sub{font-size:9.5px;color:var(--muted2);letter-spacing:.14em;text-transform:uppercase;margin-top:3px;}
+.iconbtn{width:var(--tap);height:var(--tap);border-radius:12px;background:var(--panel);border:1px solid var(--border);
+  color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;}
+.iconbtn:active{background:var(--panel2);}
+.main{padding:14px 14px 116px;}
+
+/* tab bar */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:40;
+  background:rgba(10,10,10,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
+  display:flex;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);}
+.tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:7px 2px 5px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.03em;
+  border-radius:12px;min-height:var(--tap);}
+.tabbar button.on{color:var(--gold);background:var(--gold-soft);}
+.gwrap{position:relative;display:flex;align-items:center;justify-content:center;height:19px;}
+.gwrap .glyph{font-size:17px;line-height:1;}
+.gwrap .bdg{position:absolute;top:-5px;left:calc(50% + 5px);min-width:17px;height:17px;border-radius:9px;
+  background:var(--gold);color:#0E0E0E;font-size:10px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;padding:0 4px;border:2px solid #0A0A0A;}
+
+/* segmented control */
+.seg{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:12px;}
+.seg button{flex:1;min-width:0;padding:10px 2px;border-radius:9px;color:var(--muted);font-size:11.5px;
+  font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:40px;}
+.seg button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2);}
+
+/* cards */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:9px;}
+.card.turn{border-color:var(--gold-line);background:linear-gradient(180deg,rgba(204,156,58,.09),var(--panel));}
+.card.tapme:active{border-color:var(--border2);}
+.row{display:flex;align-items:center;gap:10px;}
+.grow{flex:1;min-width:0;}
+.tt{font-weight:600;font-size:15px;line-height:1.35;overflow-wrap:anywhere;}
+.tt.done{color:var(--muted);text-decoration:line-through;}
+.meta{font-size:12px;color:var(--muted);margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;line-height:1.4;}
+.chip{font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:6px;
+  text-transform:uppercase;white-space:nowrap;}
+.chip.urgent{background:rgba(224,82,82,.16);color:var(--red);}
+.chip.back{background:var(--gold-soft);color:var(--gold);}
+.chip.sys{background:rgba(155,120,212,.16);color:var(--purple);}
+.chip.role{background:var(--panel2);color:var(--muted);box-shadow:inset 0 0 0 1px var(--border);}
+.chip.ok{background:rgba(95,184,122,.16);color:var(--green);}
+.chip.wait{background:rgba(91,143,212,.14);color:var(--blue);}
+.chip.off{background:rgba(138,132,128,.14);color:var(--muted);}
+
+/* the ball: whose turn it is */
+.ball{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(204,156,58,.8);
+  animation:pulse 1.7s ease-in-out infinite;flex:none;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.6}}
+
+.sect{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  margin:20px 2px 9px;display:flex;align-items:center;gap:8px;}
+.sect .n{color:var(--gold);}
+
+/* buttons */
+.btn{border-radius:11px;padding:12px 14px;font-weight:600;font-size:14px;text-align:center;
+  min-height:var(--tap);display:flex;align-items:center;justify-content:center;gap:5px;}
+.btn-gold{background:var(--gold);color:#141414;}
+.btn-gold:active{background:#B98A2E;}
+.btn-line{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2);}
+.btn-ghost{color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1px var(--border);}
+.btn-red{background:rgba(224,82,82,.12);color:var(--red);box-shadow:inset 0 0 0 1px rgba(224,82,82,.3);}
+.btn-sm{padding:10px 12px;font-size:13px;border-radius:10px;min-height:42px;}
+.btn:disabled{opacity:.4;}
+.btn .lbl2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.qadd{display:flex;gap:8px;margin-bottom:14px;}
+.qadd .btn{flex:none;width:52px;padding:0;font-size:20px;}
+
+/* sheets */
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:flex-end;justify-content:center;}
+.sheet{width:100%;max-width:480px;background:var(--panel);border-top:1px solid var(--border);
+  border-radius:20px 20px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 20px);
+  animation:up .22s ease-out;max-height:90dvh;overflow-y:auto;}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sheet h3{margin:0 0 4px;font-size:17px;overflow-wrap:anywhere;}
+.sheet .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.opt{display:flex;align-items:center;gap:11px;width:100%;padding:13px 12px;border-radius:11px;
+  background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border);margin-bottom:8px;
+  font-weight:600;font-size:14px;text-align:left;color:var(--text);min-height:var(--tap);}
+.opt:active{box-shadow:inset 0 0 0 1px var(--border2);}
+.opt .g{width:22px;text-align:center;flex:none;font-size:15px;}
+.opt .grow{overflow-wrap:anywhere;}
+
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.pbtn{padding:12px 8px;border-radius:11px;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border);
+  font-weight:600;font-size:13.5px;color:var(--text);min-height:var(--tap);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbtn.on{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--gold);background:var(--gold-soft);}
+
+/* coop detail */
+.detail{position:fixed;inset:0;z-index:55;background:var(--bg);max-width:480px;margin:0 auto;
+  display:flex;flex-direction:column;}
+.dhdr{padding:calc(env(safe-area-inset-top) + 10px) 12px 11px;border-bottom:1px solid var(--border);
+  display:flex;gap:10px;align-items:flex-start;}
+.thread{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.msg{max-width:82%;padding:9px 12px;border-radius:13px;font-size:14px;line-height:1.45;overflow-wrap:anywhere;}
+.msg.mine{align-self:flex-end;background:var(--gold-soft);box-shadow:inset 0 0 0 1px var(--gold-line);border-bottom-right-radius:4px;}
+.msg.theirs{align-self:flex-start;background:var(--panel);box-shadow:inset 0 0 0 1px var(--border);border-bottom-left-radius:4px;}
+.msg .who{font-size:10.5px;font-weight:700;color:var(--gold);margin-bottom:3px;letter-spacing:.04em;}
+.msg .when{font-size:10px;color:var(--muted2);margin-top:4px;text-align:right;}
+.passline{align-self:center;text-align:center;font-size:12px;color:var(--muted);background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--border);border-radius:16px;padding:8px 14px;max-width:94%;overflow-wrap:anywhere;}
+.passline b{color:var(--gold);font-weight:700;}
+.sysline{align-self:center;font-size:11.5px;color:var(--muted2);text-align:center;max-width:94%;overflow-wrap:anywhere;}
+.composer{border-top:1px solid var(--border);padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);
+  display:flex;gap:8px;background:var(--bg);}
+.composer .btn{flex:none;padding:0 16px;}
+.holderbar{display:flex;gap:8px;padding:10px 12px 0;background:var(--bg);}
+.holderbar .btn{flex:1;min-width:0;}
+.court{display:flex;gap:14px;padding:12px 14px;border-bottom:1px solid var(--border);overflow-x:auto;}
+.player{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:54px;flex:none;}
+.player .av{width:38px;height:38px;border-radius:50%;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--muted);}
+.player.acc .av{color:var(--text);box-shadow:inset 0 0 0 1px var(--gold-line);}
+.player .nm{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
+.player .slot{height:11px;display:flex;align-items:center;}
+
+/* checklists: goals + daily */
+.crow{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 6px;background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--border);border-radius:13px;margin-bottom:8px;position:relative;min-height:56px;}
+.ctap{width:var(--tap);height:var(--tap);flex:none;display:flex;align-items:center;justify-content:center;}
+.gcheck{width:27px;height:27px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:transparent;transition:all .18s;}
+.gcheck.on{background:var(--gold);box-shadow:inset 0 0 0 2px var(--gold);color:#141414;}
+.xbtn{width:36px;height:36px;flex:none;display:flex;align-items:center;justify-content:center;
+  color:var(--muted2);font-size:17px;border-radius:9px;}
+.xbtn:active{background:var(--panel2);}
+.spark{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--gold);pointer-events:none;}
+
+.pct{height:5px;border-radius:3px;background:var(--panel2);overflow:hidden;margin-top:6px;}
+.pct i{display:block;height:100%;background:var(--gold);border-radius:3px;transition:width .4s;}
+
+.daychips{display:flex;gap:5px;margin-top:8px;}
+.daychips button{flex:1;min-width:0;padding:0;height:42px;border-radius:9px;background:var(--panel2);
+  box-shadow:inset 0 0 0 1px var(--border);font-size:12px;font-weight:600;color:var(--muted);}
+.daychips button.on{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--gold);background:var(--gold-soft);}
+
+.streak{font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap;flex:none;}
+.empty{text-align:center;color:var(--muted2);font-size:13.5px;padding:30px 20px;line-height:1.6;}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 2px 7px;}
+.banner{display:flex;align-items:center;gap:10px;width:100%;background:var(--gold-soft);
+  box-shadow:inset 0 0 0 1px var(--gold-line);border-radius:13px;padding:13px 14px;margin-bottom:12px;
+  font-weight:600;font-size:13.5px;color:var(--gold);text-align:left;min-height:var(--tap);}
+.err{color:var(--red);font-size:13px;line-height:1.5;overflow-wrap:anywhere;}
+.note{color:var(--muted);font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;}
+
+.auth{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:32px 26px;gap:10px;}
+.spin{animation:rot 1s linear infinite;display:inline-block;}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* team view */
+.kv{display:flex;gap:8px;margin-top:10px;}
+.kv div{flex:1;min-width:0;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--border);
+  border-radius:10px;padding:9px 4px;text-align:center;}
+.kv .v{font-size:18px;font-weight:700;line-height:1.1;}
+.kv .k{font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-top:3px;white-space:nowrap;}
+.mini{font-size:13px;color:var(--muted);padding:8px 2px;border-bottom:1px solid var(--border);
+  display:flex;gap:8px;align-items:center;line-height:1.45;overflow-wrap:anywhere;}
+.mini:last-child{border-bottom:none;}
+.mini .fx{flex:none;}
+.bars{margin-top:10px;}
+.bars .b{font-size:11px;color:var(--muted);}
+.bars .b + .b{margin-top:7px;}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="shell"><div id="root"></div></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+const SUPA_URL = "https://xttqxjuunuchlxjrknyt.supabase.co";
+const SUPA_KEY = "sb_publishable_qL2xlkjIkIWGOkzaDitIJw_3iRNx9dA";
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const PERIOD_TYPES = ['week','month','semester','year'];
+const PLABEL = {week:'Weekly',month:'Monthly',semester:'Semester',year:'Yearly'};
+const PWORD  = {week:'week',month:'month',semester:'semester',year:'year'};
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ── helpers ─────────────────────────────────────────────── */
+const pad = n => String(n).padStart(2,'0');
+const nowIso = () => new Date().toISOString();
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const first = s => String(s||'').trim().split(/\s+/)[0] || '?';
+
+function mondayOf(d){ const x=new Date(d); const s=(x.getDay()+6)%7; x.setDate(x.getDate()-s); x.setHours(0,0,0,0); return x; }
+function periodKey(type,d){ d=d||new Date();
+  if(type==='week') return isoDate(mondayOf(d));
+  if(type==='month') return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  if(type==='semester') return `${d.getFullYear()}-H${d.getMonth()<6?1:2}`;
+  return String(d.getFullYear());
+}
+function prevPeriodKey(type,d){ d=d||new Date();
+  if(type==='week'){ const m=mondayOf(d); m.setDate(m.getDate()-7); return isoDate(m); }
+  if(type==='month') return periodKey('month', new Date(d.getFullYear(), d.getMonth()-1, 1));
+  if(type==='semester') return periodKey('semester', new Date(d.getFullYear(), d.getMonth()-6, 1));
+  return String(d.getFullYear()-1);
+}
+function periodLabel(type,key){
+  if(!key) return '';
+  if(type==='week'){ const s=new Date(key+'T12:00:00'); if(isNaN(s)) return key;
+    const e=new Date(s); e.setDate(e.getDate()+6);
+    return `${MON[s.getMonth()]} ${s.getDate()} - ${MON[e.getMonth()]} ${e.getDate()}`; }
+  if(type==='month'){ const [y,m]=key.split('-'); return `${MON[+m-1]} ${y}`; }
+  if(type==='semester'){ const [y,h]=key.split('-'); return h==='H1'?`${y} Jan - Jun`:`${y} Jul - Dec`; }
+  return key;
+}
+function fmtShort(ts){ if(!ts)return''; const d=new Date(ts);
+  return `${MON[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; }
+function fmtDay(ts){ if(!ts)return''; const d=new Date(ts); return `${MON[d.getMonth()]} ${d.getDate()}`; }
+function daysAgo(ts){ if(!ts)return 0; return Math.max(0, Math.floor((Date.now()-new Date(ts))/86400000)); }
+function inWords(ts){ if(!ts) return ''; const ms=new Date(ts)-Date.now(); if(ms<=0) return 'any moment';
+  const h=Math.round(ms/3600000); if(h<24) return `in ${h||1}h`; return `in ${Math.round(h/24)}d`; }
+function lastDayOfMonth(y,m){ return new Date(y,m,0).getDate(); }
+function isDueOn(rec,d){
+  if(rec.freq==='daily') return true;
+  if(rec.freq==='weekly') return (rec.days||[]).includes(d.getDay());
+  if(rec.freq==='monthly'){ const dom=Math.min(rec.day_of_month||1, lastDayOfMonth(d.getFullYear(), d.getMonth()+1));
+    return d.getDate()===dom; }
+  return false;
+}
+function prevDueDate(rec, from){ const d=new Date(from);
+  for(let i=0;i<400;i++){ d.setDate(d.getDate()-1); if(isDueOn(rec,d)) return isoDate(d); } return null; }
+function freqLabel(rec){
+  if(rec.freq==='daily') return 'Every day';
+  if(rec.freq==='weekly'){ const ds=(rec.days||[]).slice().sort();
+    if(!ds.length) return 'No days picked';
+    return ds.length===7?'Every day':ds.map(x=>DOW[x]).join(' '); }
+  return `Day ${rec.day_of_month||1} of each month`;
+}
+function timeLabel(hhmm){ const [h,m]=(hhmm||'09:00').split(':').map(Number);
+  const ap=h<12?'AM':'PM'; const hh=h%12===0?12:h%12; return `${hh}:${pad(m)} ${ap}`; }
+const urlB64ToU8 = s => { const p='='.repeat((4-s.length%4)%4); const b=(s+p).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(b); const a=new Uint8Array(raw.length); for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i); return a; };
+
+async function authHeader(){
+  const {data:{session}} = await sb.auth.getSession();
+  return session ? {'Authorization':'Bearer '+session.access_token} : null;
+}
+async function notifyUsers(to, title, body, coopId){
+  try{
+    const h=await authHeader();
+    if(!h || !to || !to.length) return;
+    await fetch('/.netlify/functions/notify',{
+      method:'POST', headers:{'Content-Type':'application/json',...h},
+      body: JSON.stringify({to:[...new Set(to.filter(Boolean))], title, body: body||'', coopId: coopId||null}),
+    });
+  }catch(e){ console.error('notify', e); }
+}
+async function callMembers(payload){
+  const h=await authHeader();
+  if(!h) throw new Error('Sign in again.');
+  const res=await fetch('/.netlify/functions/wios-members',{
+    method:'POST', headers:{'Content-Type':'application/json',...h}, body: JSON.stringify(payload),
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Request failed.');
+  return data;
+}
+
+function burst(el){
+  if(!el || !el.animate) return;
+  for(let i=0;i<9;i++){
+    const s=document.createElement('span'); s.className='spark';
+    s.style.left='26px'; s.style.top='50%';
+    el.appendChild(s);
+    const a=(Math.PI*2*i)/9, dist=26+Math.random()*20;
+    s.animate([{transform:'translate(0,0) scale(1)',opacity:1},
+      {transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(.3)`,opacity:0}],
+      {duration:520,easing:'ease-out'}).onfinish=()=>s.remove();
+  }
+}
+
+/* ── shared bits ─────────────────────────────────────────── */
+function Sheet({onClose, children}){
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="sheet">{children}</div>
+    </div>
+  );
+}
+function Seg({items, value, onChange}){
+  return (
+    <div className="seg">
+      {items.map(it=>(
+        <button key={it.k} className={value===it.k?'on':''} onClick={()=>onChange(it.k)}>{it.l}</button>
+      ))}
+    </div>
+  );
+}
+function PersonGrid({people, value, onChange, exclude}){
+  const list=people.filter(p=>p.id!==exclude);
+  if(!list.length) return <div className="note" style={{marginBottom:10}}>No other members yet.</div>;
+  return (
+    <div className="pgrid">
+      {list.map(p=>(
+        <button key={p.id} className={'pbtn'+(value===p.id?' on':'')} onClick={()=>onChange(p.id)}>
+          {p.role} {first(p.name)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── login ───────────────────────────────────────────────── */
+const LOGIN_DOMAIN = 'uglydonutsncorndogs.com';
+function toEmail(idOrEmail){
+  const v=String(idOrEmail||'').trim().toLowerCase();
+  if(!v) return '';
+  return v.includes('@') ? v : `${v}@${LOGIN_DOMAIN}`;
+}
+function Login(){
+  const [uid,setUid]=useState(''); const [pw,setPw]=useState('');
+  const [busy,setBusy]=useState(false); const [err,setErr]=useState('');
+  async function go(){
+    if(busy||!uid.trim()||!pw) return;
+    setBusy(true); setErr('');
+    const {error}=await sb.auth.signInWithPassword({email:toEmail(uid), password:pw});
+    if(error) setErr('That ID or password did not work. Check and try again.');
+    setBusy(false);
+  }
+  return (
+    <div className="auth">
+      <div style={{textAlign:'center',marginBottom:22}}>
+        <div className="wordmark" style={{fontSize:40}}>WIOS</div>
+        <div style={{fontSize:10.5,letterSpacing:'.18em',textTransform:'uppercase',color:'var(--muted)',marginTop:8}}>
+          Ugly Donuts &amp; Corn Dogs
+        </div>
+      </div>
+      <input placeholder="ID (e.g. john.kim)" type="text" autoCapitalize="none" autoCorrect="off"
+        spellCheck="false" autoComplete="username" value={uid}
+        onChange={e=>setUid(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
+      <input placeholder="Password" type="password" autoComplete="current-password" value={pw}
+        onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()}/>
+      {err&&<div className="err">{err}</div>}
+      <button className="btn btn-gold" disabled={busy||!uid.trim()||!pw} onClick={go}>
+        {busy?'Signing in...':'Sign in'}
+      </button>
+      <div className="note" style={{textAlign:'center',marginTop:6}}>
+        Your ID is the part before the @ in your email.
+      </div>
+    </div>
+  );
+}
+
+/* ── tasks ───────────────────────────────────────────────── */
+function TasksTab({me, people, tasks, coopsMyTurn, reload, gotoGoals, gotoCoop}){
+  const [seg,setSeg]=useState('active');
+  const [quick,setQuick]=useState('');
+  const [sel,setSel]=useState(null);
+  const [mode,setMode]=useState('main');
+  const [customN,setCustomN]=useState(2); const [customU,setCustomU]=useState('days');
+  const [schedAt,setSchedAt]=useState('');
+  const [sendTo,setSendTo]=useState(null); const [sendMsg,setSendMsg]=useState('');
+  const [busy,setBusy]=useState(false);
+
+  const lists=useMemo(()=>{
+    const by={active:[],waiting:[],scheduled:[],done:[]};
+    tasks.forEach(t=>{ (by[t.status]||by.active).push(t); });
+    by.active.sort((a,b)=>(b.urgent-a.urgent)||(b.reminded-a.reminded)||(new Date(b.created_at)-new Date(a.created_at)));
+    by.waiting.sort((a,b)=>new Date(a.remind_at||0)-new Date(b.remind_at||0));
+    by.scheduled.sort((a,b)=>new Date(a.scheduled_at||0)-new Date(b.scheduled_at||0));
+    by.done.sort((a,b)=>new Date(b.completed_at||0)-new Date(a.completed_at||0));
+    by.done=by.done.slice(0,40);
+    return by;
+  },[tasks]);
+
+  async function addQuick(){
+    const title=quick.trim(); if(!title) return;
+    setQuick('');
+    await sb.from('wios_tasks').insert({owner_id:me.id, title, status:'active'});
+    reload();
+  }
+  async function patch(t, fields){
+    await sb.from('wios_tasks').update(fields).eq('id',t.id);
+    setSel(null); setMode('main'); reload();
+  }
+  const markDone   = t => patch(t,{status:'done', completed_at:nowIso(), reminded:false, urgent:false});
+  const toWaiting  = (t,hours) => patch(t,{status:'waiting',
+    remind_at:new Date(Date.now()+hours*3600000).toISOString(),
+    waiting_since:t.waiting_since||nowIso(), reminded:false, urgent:false});
+  const toScheduled = t => schedAt && patch(t,{status:'scheduled',
+    scheduled_at:new Date(schedAt).toISOString(), reminded:false});
+
+  async function sendTask(t){
+    if(!sendTo || busy) return;
+    setBusy(true);
+    try{
+      const {data:coop, error}=await sb.from('wios_coops').insert({
+        title:t.title, notes:t.notes, creator_id:me.id, holder_id:null,
+        pending_id:sendTo, last_holder_id:me.id, urgent:t.urgent
+      }).select().single();
+      if(error) throw error;
+      await sb.from('wios_coop_members').insert([
+        {coop_id:coop.id, user_id:me.id, status:'accepted', joined_at:nowIso()},
+        {coop_id:coop.id, user_id:sendTo, status:'pending', invited_by:me.id, invite_message:sendMsg||null},
+      ]);
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id, user_id:me.id, kind:'pass',
+        pass_to:sendTo, body:sendMsg||null});
+      await sb.from('wios_tasks').delete().eq('id',t.id);
+      notifyUsers([sendTo], `Task request from ${me.role} ${first(me.name)}`, t.title, coop.id);
+      setSel(null); setMode('main'); setSendTo(null); setSendMsg('');
+      reload();
+    }catch(e){ alert(e.message||'Could not send this task.'); }
+    setBusy(false);
+  }
+
+  function openSheet(t){
+    setSel(t); setMode('main'); setSendTo(null); setSendMsg('');
+    const d=new Date(Date.now()+86400000);
+    setSchedAt(`${isoDate(d)}T09:00`);
+  }
+
+  const segItems=[
+    {k:'active',l:`Active${lists.active.length?` ${lists.active.length}`:''}`},
+    {k:'waiting',l:`Waiting${lists.waiting.length?` ${lists.waiting.length}`:''}`},
+    {k:'scheduled',l:'Later'},
+    {k:'done',l:'Done'},
+  ];
+
+  return (
+    <div>
+      {coopsMyTurn>0&&(
+        <button className="banner" onClick={gotoCoop}>
+          <span className="ball"/>
+          <span className="grow">{coopsMyTurn} coop task{coopsMyTurn>1?'s':''} waiting on you</span>
+          <span>→</span>
+        </button>
+      )}
+      <div className="qadd">
+        <input placeholder="Add a task..." value={quick} onChange={e=>setQuick(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&addQuick()}/>
+        <button className="btn btn-gold" onClick={addQuick} aria-label="Add task">+</button>
+      </div>
+      <Seg items={segItems} value={seg} onChange={setSeg}/>
+
+      {lists[seg].length===0&&(
+        <div className="empty">
+          {seg==='active'&&'Nothing here. Add a task above.'}
+          {seg==='waiting'&&'Nothing is parked with someone else.'}
+          {seg==='scheduled'&&'Nothing is set aside for later.'}
+          {seg==='done'&&'Completed tasks land here.'}
+        </div>
+      )}
+
+      {lists[seg].map(t=>(
+        <div key={t.id} className="card tapme" onClick={()=>openSheet(t)}>
+          <div className="row">
+            <div className="grow">
+              <div className={'tt'+(t.status==='done'?' done':'')}>{t.title}</div>
+              <div className="meta">
+                {t.urgent&&<span className="chip urgent">Urgent</span>}
+                {t.reminded&&t.status==='active'&&<span className="chip back">Back</span>}
+                {t.is_system&&<span className="chip sys">Goals</span>}
+                {t.status==='waiting'&&
+                  <span>{daysAgo(t.waiting_since||t.created_at)}d waiting, back {inWords(t.remind_at)}</span>}
+                {t.status==='scheduled'&&<span>Starts {fmtShort(t.scheduled_at)}</span>}
+                {t.status==='done'&&<span>Done {fmtDay(t.completed_at)}</span>}
+              </div>
+            </div>
+            {t.urgent&&t.status!=='done'&&<span style={{color:'var(--gold)',fontSize:15,flex:'none'}}>★</span>}
+          </div>
+        </div>
+      ))}
+
+      {sel&&(
+        <Sheet onClose={()=>setSel(null)}>
+          <h3>{sel.title}</h3>
+          <div className="sub">
+            {sel.status==='waiting'?`Waiting ${daysAgo(sel.waiting_since||sel.created_at)}d, comes back ${inWords(sel.remind_at)}`:
+             sel.status==='scheduled'?`Set aside until ${fmtShort(sel.scheduled_at)}`:
+             sel.is_system?'Goal check-in':'What next?'}
+          </div>
+
+          {mode==='main'&&(
+            <div>
+              {sel.is_system&&sel.system_ref&&(
+                <button className="opt" onClick={()=>{ const tp=sel.system_ref.split(':')[0]; setSel(null); gotoGoals(tp); }}>
+                  <span className="g">◎</span><span className="grow">Open Goals</span>
+                </button>
+              )}
+              {sel.status!=='done'&&(
+                <button className="opt" onClick={()=>markDone(sel)}>
+                  <span className="g">✓</span><span className="grow">Mark done</span>
+                </button>
+              )}
+              {sel.status==='done'&&(
+                <button className="opt" onClick={()=>patch(sel,{status:'active',completed_at:null})}>
+                  <span className="g">↩</span><span className="grow">Move back to Active</span>
+                </button>
+              )}
+              {sel.status!=='done'&&(
+                <button className="opt" onClick={()=>patch(sel,{urgent:!sel.urgent})}>
+                  <span className="g">★</span>
+                  <span className="grow">{sel.urgent?'Remove urgent':'Mark urgent, pin to top'}</span>
+                </button>
+              )}
+              {sel.status!=='done'&&!sel.is_system&&<>
+                <button className="opt" onClick={()=>setMode('waiting')}>
+                  <span className="g">⏳</span><span className="grow">Waiting on someone, remind me later</span>
+                </button>
+                <button className="opt" onClick={()=>setMode('schedule')}>
+                  <span className="g">📅</span><span className="grow">Set aside until a date</span>
+                </button>
+                <button className="opt" onClick={()=>setMode('send')}>
+                  <span className="g">➤</span><span className="grow">Send to a teammate</span>
+                </button>
+              </>}
+              <button className="opt" style={{color:'var(--red)'}}
+                onClick={async()=>{ if(!confirm('Delete this task?'))return;
+                  await sb.from('wios_tasks').delete().eq('id',sel.id); setSel(null); reload(); }}>
+                <span className="g">🗑</span><span className="grow">Delete</span>
+              </button>
+            </div>
+          )}
+
+          {mode==='waiting'&&(
+            <div>
+              <div className="lbl">Bring it back in</div>
+              <div className="pgrid">
+                {[['3 hours',3],['6 hours',6],['1 day',24],['2 days',48],['3 days',72],['1 week',168]].map(([l,h])=>(
+                  <button key={l} className="pbtn" onClick={()=>toWaiting(sel,h)}>{l}</button>
+                ))}
+              </div>
+              <div className="lbl">Or pick your own</div>
+              <div className="row">
+                <input type="number" min="1" value={customN} onChange={e=>setCustomN(+e.target.value||1)}
+                  style={{width:84,flex:'none'}}/>
+                <select value={customU} onChange={e=>setCustomU(e.target.value)} style={{flex:1}}>
+                  <option value="hours">hours</option><option value="days">days</option>
+                </select>
+                <button className="btn btn-gold btn-sm" style={{flex:'none',padding:'0 18px'}}
+                  onClick={()=>toWaiting(sel, customU==='hours'?customN:customN*24)}>Set</button>
+              </div>
+              <div className="note" style={{marginTop:12}}>
+                It moves to Waiting and counts the days. When the time is up it comes back to Active with a notification.
+              </div>
+            </div>
+          )}
+
+          {mode==='schedule'&&(
+            <div>
+              <div className="lbl">Bring it back on</div>
+              <input type="datetime-local" value={schedAt} onChange={e=>setSchedAt(e.target.value)}/>
+              <div style={{height:12}}/>
+              <button className="btn btn-gold" style={{width:'100%'}} onClick={()=>toScheduled(sel)}>Set aside</button>
+            </div>
+          )}
+
+          {mode==='send'&&(
+            <div>
+              <div className="lbl">Send to</div>
+              <PersonGrid people={people} value={sendTo} onChange={setSendTo} exclude={me.id}/>
+              <textarea rows="2" placeholder="What do you need from them?" value={sendMsg}
+                onChange={e=>setSendMsg(e.target.value)}/>
+              <div style={{height:12}}/>
+              <button className="btn btn-gold" style={{width:'100%'}} disabled={!sendTo||busy} onClick={()=>sendTask(sel)}>
+                {busy?'Sending...':'Send request'}
+              </button>
+              <div className="note" style={{marginTop:10}}>
+                They can accept or respond. Once accepted it becomes a coop task you can both follow.
+              </div>
+            </div>
+          )}
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+/* ── coop ────────────────────────────────────────────────── */
+function CoopTab({me, people, coops, members, reload, openId, setOpenId}){
+  const [showNew,setShowNew]=useState(false);
+  const [nTitle,setNTitle]=useState(''); const [nTo,setNTo]=useState(null); const [nMsg,setNMsg]=useState('');
+  const [nUrgent,setNUrgent]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [declining,setDeclining]=useState(null); const [declineMsg,setDeclineMsg]=useState('');
+
+  const label=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
+  const myM=id=>members.find(m=>m.coop_id===id&&m.user_id===me.id);
+
+  const groups=useMemo(()=>{
+    const req=[], turn=[], play=[], closed=[];
+    coops.forEach(c=>{
+      const m=members.find(x=>x.coop_id===c.id&&x.user_id===me.id);
+      const involved = !!m || c.creator_id===me.id;
+      if(!involved) return;                                   // admins can read all coops, only show their own
+      if(c.status==='closed'){ closed.push(c); return; }
+      if(m&&m.status==='pending'){ req.push(c); return; }
+      if(c.holder_id===me.id){ turn.push(c); return; }
+      if((m&&m.status==='accepted')||c.creator_id===me.id) play.push(c);
+    });
+    turn.sort((a,b)=>(b.urgent-a.urgent)||(new Date(b.created_at)-new Date(a.created_at)));
+    play.sort((a,b)=>(b.urgent-a.urgent)||(new Date(b.created_at)-new Date(a.created_at)));
+    closed.sort((a,b)=>new Date(b.closed_at||0)-new Date(a.closed_at||0));
+    return {req,turn,play,closed:closed.slice(0,25)};
+  },[coops,members,me.id]);
+
+  async function accept(c){
+    if(busy) return; setBusy(true);
+    try{
+      await sb.from('wios_coop_members').update({status:'accepted',joined_at:nowIso()})
+        .eq('coop_id',c.id).eq('user_id',me.id);
+      if(c.pending_id===me.id){
+        await sb.from('wios_coops').update({holder_id:me.id,pending_id:null}).eq('id',c.id);
+      }
+      await sb.from('wios_coop_messages').insert({coop_id:c.id,user_id:me.id,kind:'system',
+        body:`${label(me.id)} accepted`});
+      const others=[...new Set(members.filter(m=>m.coop_id===c.id&&m.status==='accepted')
+        .map(m=>m.user_id).concat([c.creator_id]))].filter(x=>x!==me.id);
+      notifyUsers(others, `${label(me.id)} accepted`, c.title, c.id);
+      await reload(); setOpenId(c.id);
+    }catch(e){ alert(e.message||'Could not accept.'); }
+    setBusy(false);
+  }
+  async function sendDecline(){
+    const c=declining; if(!c||busy) return; setBusy(true);
+    try{
+      const msg=declineMsg.trim();
+      await sb.from('wios_coop_members').update({status:'declined'}).eq('coop_id',c.id).eq('user_id',me.id);
+      await sb.from('wios_coop_messages').insert({coop_id:c.id,user_id:me.id,kind:'system',
+        body:`${label(me.id)} responded${msg?`: ${msg}`:''}`});
+      if(c.pending_id===me.id){
+        await sb.from('wios_coops').update({pending_id:null, holder_id:c.last_holder_id||c.creator_id}).eq('id',c.id);
+      }
+      const m=myM(c.id);
+      notifyUsers([(m&&m.invited_by)||c.creator_id], `${label(me.id)} responded`,
+        `${c.title}${msg?`: ${msg}`:''}`, c.id);
+      setDeclining(null); setDeclineMsg('');
+      reload();
+    }catch(e){ alert(e.message||'Could not send.'); }
+    setBusy(false);
+  }
+  async function createCoop(){
+    const title=nTitle.trim(); if(!title||!nTo||busy) return;
+    setBusy(true);
+    try{
+      const {data:coop,error}=await sb.from('wios_coops').insert({
+        title, creator_id:me.id, holder_id:null, pending_id:nTo, last_holder_id:me.id, urgent:nUrgent
+      }).select().single();
+      if(error) throw error;
+      await sb.from('wios_coop_members').insert([
+        {coop_id:coop.id,user_id:me.id,status:'accepted',joined_at:nowIso()},
+        {coop_id:coop.id,user_id:nTo,status:'pending',invited_by:me.id,invite_message:nMsg||null},
+      ]);
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'pass',
+        pass_to:nTo,body:nMsg||null});
+      notifyUsers([nTo], `Task request from ${label(me.id)}`, title, coop.id);
+      setShowNew(false); setNTitle(''); setNTo(null); setNMsg(''); setNUrgent(false);
+      reload();
+    }catch(e){ alert(e.message||'Could not create.'); }
+    setBusy(false);
+  }
+
+  function CoopCard({c, request}){
+    const m=myM(c.id);
+    const mine=c.holder_id===me.id&&c.status==='active';
+    return (
+      <div className={'card'+(mine?' turn':'')+(request?'':' tapme')}
+        onClick={()=>!request&&setOpenId(c.id)}>
+        <div className="row">
+          {mine&&<span className="ball"/>}
+          <div className="grow">
+            <div className="tt">{c.title}</div>
+            <div className="meta">
+              {c.urgent&&c.status==='active'&&<span className="chip urgent">Urgent</span>}
+              {c.status==='closed'
+                ? <span className="chip ok">Done {fmtDay(c.closed_at)}</span>
+                : c.pending_id ? <span className="chip wait">Sent to {label(c.pending_id)}</span>
+                : mine ? <span className="chip back">Your turn</span>
+                : c.holder_id ? <span className="chip wait">With {label(c.holder_id)}</span>
+                : null}
+              <span>from {label(c.creator_id)}</span>
+            </div>
+            {request&&m&&m.invite_message&&(
+              <div className="note" style={{marginTop:8,fontStyle:'italic'}}>"{m.invite_message}"</div>
+            )}
+          </div>
+        </div>
+        {request&&(
+          <div className="row" style={{marginTop:12,gap:8}}>
+            <button className="btn btn-gold btn-sm" style={{flex:1}} disabled={busy}
+              onClick={e=>{e.stopPropagation();accept(c);}}>Accept</button>
+            <button className="btn btn-line btn-sm" style={{flex:1}} disabled={busy}
+              onClick={e=>{e.stopPropagation();setDeclining(c);setDeclineMsg('');}}>Respond</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button className="btn btn-line" style={{width:'100%',marginBottom:4}} onClick={()=>setShowNew(true)}>
+        + New coop task
+      </button>
+
+      {groups.req.length>0&&<div className="sect">Requests <span className="n">{groups.req.length}</span></div>}
+      {groups.req.map(c=><CoopCard key={c.id} c={c} request/>)}
+
+      <div className="sect">Your turn {groups.turn.length>0&&<span className="n">{groups.turn.length}</span>}</div>
+      {groups.turn.length===0&&<div className="empty" style={{padding:'14px'}}>The ball is not in your court.</div>}
+      {groups.turn.map(c=><CoopCard key={c.id} c={c}/>)}
+
+      {groups.play.length>0&&<div className="sect">With someone else</div>}
+      {groups.play.map(c=><CoopCard key={c.id} c={c}/>)}
+
+      {groups.closed.length>0&&<div className="sect">Completed</div>}
+      {groups.closed.map(c=><CoopCard key={c.id} c={c}/>)}
+
+      {showNew&&(
+        <Sheet onClose={()=>setShowNew(false)}>
+          <h3>New coop task</h3>
+          <div className="sub">It starts as a request. Once they accept, you hand it back and forth until someone closes it.</div>
+          <input placeholder="What needs doing?" value={nTitle} onChange={e=>setNTitle(e.target.value)}/>
+          <div className="lbl">Send to</div>
+          <PersonGrid people={people} value={nTo} onChange={setNTo} exclude={me.id}/>
+          <textarea rows="2" placeholder="Message (optional)" value={nMsg} onChange={e=>setNMsg(e.target.value)}/>
+          <button className="opt" style={{marginTop:10}} onClick={()=>setNUrgent(!nUrgent)}>
+            <span className="g" style={{color:nUrgent?'var(--gold)':'var(--muted2)'}}>★</span>
+            <span className="grow">{nUrgent?'Urgent':'Mark urgent'}</span>
+          </button>
+          <div style={{height:6}}/>
+          <button className="btn btn-gold" style={{width:'100%'}}
+            disabled={!nTitle.trim()||!nTo||busy} onClick={createCoop}>
+            {busy?'Sending...':'Send request'}
+          </button>
+        </Sheet>
+      )}
+
+      {declining&&(
+        <Sheet onClose={()=>setDeclining(null)}>
+          <h3>Respond</h3>
+          <div className="sub">Tell them why this is not needed, or suggest another way. It goes back to whoever sent it.</div>
+          <textarea rows="3" placeholder="Your message" value={declineMsg} onChange={e=>setDeclineMsg(e.target.value)}/>
+          <div style={{height:12}}/>
+          <button className="btn btn-gold" style={{width:'100%'}} disabled={busy} onClick={sendDecline}>
+            {busy?'Sending...':'Send response'}
+          </button>
+        </Sheet>
+      )}
+
+      {openId&&<CoopDetail me={me} people={people}
+        coop={coops.find(c=>c.id===openId)} members={members.filter(m=>m.coop_id===openId)}
+        onClose={()=>setOpenId(null)} reload={reload}/>}
+    </div>
+  );
+}
+
+function CoopDetail({me, people, coop, members, onClose, reload}){
+  const [msgs,setMsgs]=useState([]); const [text,setText]=useState('');
+  const [passing,setPassing]=useState(false); const [passTo,setPassTo]=useState(null); const [passMsg,setPassMsg]=useState('');
+  const [busy,setBusy]=useState(false);
+  const endRef=useRef(null);
+  const label=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
+
+  async function loadMsgs(){
+    if(!coop) return;
+    const {data}=await sb.from('wios_coop_messages').select('*').eq('coop_id',coop.id).order('created_at');
+    setMsgs(data||[]);
+    setTimeout(()=>endRef.current&&endRef.current.scrollIntoView({block:'end'}),60);
+  }
+  useEffect(()=>{ loadMsgs(); },[coop&&coop.id]);
+
+  if(!coop) return null;
+  const iAmHolder=coop.holder_id===me.id&&coop.status==='active';
+  const acceptedIds=members.filter(m=>m.status==='accepted').map(m=>m.user_id);
+  const everyone=[...new Set(acceptedIds.concat([coop.creator_id]))];
+  const invited=coop.pending_id&&!everyone.includes(coop.pending_id)?coop.pending_id:null;
+
+  async function comment(){
+    const body=text.trim(); if(!body||busy) return;
+    setText('');
+    await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'comment',body});
+    notifyUsers(everyone.filter(x=>x!==me.id), coop.title, `${label(me.id)}: ${body}`, coop.id);
+    loadMsgs();
+  }
+  async function doPass(){
+    if(!passTo||busy) return; setBusy(true);
+    try{
+      const target=members.find(m=>m.user_id===passTo);
+      const msg=passMsg.trim();
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'pass',
+        pass_to:passTo,body:msg||null});
+      if(target&&target.status==='accepted'){
+        await sb.from('wios_coops').update({holder_id:passTo,pending_id:null,last_holder_id:me.id}).eq('id',coop.id);
+        notifyUsers([passTo], `Your turn: ${coop.title}`, msg||`Passed by ${label(me.id)}`, coop.id);
+      }else{
+        if(!target){
+          await sb.from('wios_coop_members').insert({coop_id:coop.id,user_id:passTo,status:'pending',
+            invited_by:me.id,invite_message:msg||null});
+        }else{
+          await sb.from('wios_coop_members').update({status:'pending',invited_by:me.id,invite_message:msg||null})
+            .eq('coop_id',coop.id).eq('user_id',passTo);
+        }
+        await sb.from('wios_coops').update({holder_id:null,pending_id:passTo,last_holder_id:me.id}).eq('id',coop.id);
+        notifyUsers([passTo], `Task request from ${label(me.id)}`, coop.title, coop.id);
+      }
+      setPassing(false); setPassTo(null); setPassMsg('');
+      await reload(); loadMsgs();
+    }catch(e){ alert(e.message||'Could not pass this on.'); }
+    setBusy(false);
+  }
+  async function closeCoop(){
+    if(busy||!confirm('Close this for everyone?')) return;
+    setBusy(true);
+    try{
+      await sb.from('wios_coops').update({status:'closed',closed_at:nowIso(),closed_by:me.id}).eq('id',coop.id);
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'system',
+        body:`Completed and closed by ${label(me.id)}`});
+      notifyUsers(everyone.filter(x=>x!==me.id), `Completed: ${coop.title}`, `Closed by ${label(me.id)}`, coop.id);
+      await reload(); onClose();
+    }catch(e){ alert(e.message||'Could not close.'); setBusy(false); }
+  }
+
+  return (
+    <div className="detail">
+      <div className="dhdr">
+        <button className="iconbtn" onClick={onClose} aria-label="Back">←</button>
+        <div className="grow">
+          <div className="tt">{coop.title}</div>
+          <div className="meta">
+            {coop.status==='closed'?<span className="chip ok">Completed</span>:
+             coop.pending_id?<span className="chip wait">Sent to {label(coop.pending_id)}</span>:
+             iAmHolder?<span className="chip back">Your turn</span>:
+             <span className="chip wait">With {label(coop.holder_id)}</span>}
+            <span>from {label(coop.creator_id)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="court">
+        {everyone.map(id=>{
+          const p=people.find(x=>x.id===id); if(!p) return null;
+          const m=members.find(x=>x.user_id===id);
+          const acc=id===coop.creator_id||(m&&m.status==='accepted');
+          return (
+            <div key={id} className={'player'+(acc?' acc':'')}>
+              <div className="av">{p.role}</div>
+              <div className="nm">{first(p.name)}</div>
+              <div className="slot">{coop.holder_id===id&&coop.status==='active'&&<span className="ball"/>}</div>
+            </div>
+          );
+        })}
+        {invited&&(()=>{
+          const p=people.find(x=>x.id===invited); if(!p) return null;
+          return (
+            <div key={invited} className="player">
+              <div className="av">{p.role}</div>
+              <div className="nm">{first(p.name)} ?</div>
+              <div className="slot"/>
+            </div>
+          );
+        })()}
+      </div>
+
+      <div className="thread">
+        {msgs.map(m=>{
+          if(m.kind==='system') return <div key={m.id} className="sysline">{m.body}</div>;
+          if(m.kind==='pass') return (
+            <div key={m.id} className="passline">
+              <b>{label(m.user_id)}</b> → <b>{label(m.pass_to)}</b>
+              {m.body&&<div style={{marginTop:4,color:'var(--text)'}}>{m.body}</div>}
+              <div style={{fontSize:10,color:'var(--muted2)',marginTop:4}}>{fmtShort(m.created_at)}</div>
+            </div>
+          );
+          const mine=m.user_id===me.id;
+          return (
+            <div key={m.id} className={'msg '+(mine?'mine':'theirs')}>
+              {!mine&&<div className="who">{label(m.user_id)}</div>}
+              {m.body}
+              <div className="when">{fmtShort(m.created_at)}</div>
+            </div>
+          );
+        })}
+        <div ref={endRef}/>
+      </div>
+
+      {iAmHolder&&(
+        <div className="holderbar">
+          <button className="btn btn-line" disabled={busy} onClick={()=>setPassing(true)}>
+            <span className="lbl2">Pass to...</span>
+          </button>
+          <button className="btn btn-gold" disabled={busy} onClick={closeCoop}>
+            <span className="lbl2">Complete &amp; close</span>
+          </button>
+        </div>
+      )}
+      {coop.status==='active'&&(
+        <div className="composer">
+          <input placeholder="Comment..." value={text} onChange={e=>setText(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&comment()}/>
+          <button className="btn btn-gold btn-sm" onClick={comment}>Send</button>
+        </div>
+      )}
+
+      {passing&&(
+        <Sheet onClose={()=>setPassing(false)}>
+          <h3>Pass to</h3>
+          <div className="sub">Your part is done. Hand the ball to whoever is next.</div>
+          <PersonGrid people={people} value={passTo} onChange={setPassTo} exclude={me.id}/>
+          <textarea rows="2" placeholder="What should they do next?" value={passMsg}
+            onChange={e=>setPassMsg(e.target.value)}/>
+          <div style={{height:12}}/>
+          <button className="btn btn-gold" style={{width:'100%'}} disabled={!passTo||busy} onClick={doPass}>
+            {busy?'Passing...':'Pass'}
+          </button>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+/* ── goals ───────────────────────────────────────────────── */
+function GoalsTab({me, goals, gps, reload, goalType, setGoalType, tasks}){
+  const [text,setText]=useState('');
+  const [openHist,setOpenHist]=useState(null);
+  const type=goalType;
+  const key=periodKey(type), prevKey=prevPeriodKey(type);
+  const mine=useMemo(()=>goals.filter(g=>g.period_type===type),[goals,type]);
+  const cur=mine.filter(g=>g.period_key===key&&g.status!=='deleted'&&g.status!=='kept')
+    .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const prevOpen=mine.filter(g=>g.period_key===prevKey&&g.status==='open');
+  const prevAll=mine.filter(g=>g.period_key===prevKey&&g.status!=='deleted');
+  const prevGp=gps.find(x=>x.period_type===type&&x.period_key===prevKey);
+  const showReview=prevOpen.length>0&&!(prevGp&&prevGp.review_done);
+  const doneN=cur.filter(g=>g.status==='completed').length;
+  const donePct=cur.length?Math.round(doneN/cur.length*100):0;
+
+  const historyKeys=useMemo(()=>{
+    const ks=[...new Set(mine.filter(g=>g.period_key!==key&&g.status!=='deleted').map(g=>g.period_key))];
+    return ks.sort().reverse();
+  },[mine,key]);
+
+  async function completePromptTask(){
+    const ref=`${type}:${key}`;
+    const t=tasks.find(x=>x.system_ref===ref&&x.status==='active');
+    if(t) await sb.from('wios_tasks').update({status:'done',completed_at:nowIso(),urgent:false}).eq('id',t.id);
+  }
+  async function addGoal(){
+    const title=text.trim(); if(!title) return;
+    setText('');
+    await sb.from('wios_goals').insert({owner_id:me.id,period_type:type,period_key:key,title,status:'open'});
+    await completePromptTask();
+    reload();
+  }
+  async function toggle(g,e){
+    const row=e.currentTarget.closest('.crow');
+    if(g.status==='open'){
+      burst(row);
+      await sb.from('wios_goals').update({status:'completed',completed_at:nowIso()}).eq('id',g.id);
+    }else{
+      await sb.from('wios_goals').update({status:'open',completed_at:null}).eq('id',g.id);
+    }
+    reload();
+  }
+  async function markReviewDone(){
+    await sb.from('wios_goal_periods').upsert(
+      {user_id:me.id,period_type:type,period_key:prevKey,prompted:true,review_done:true},
+      {onConflict:'user_id,period_type,period_key'});
+    reload();
+  }
+  const lastOne = () => prevOpen.length<=1;
+  async function reviewComplete(g){
+    await sb.from('wios_goals').update({status:'completed',completed_at:nowIso()}).eq('id',g.id);
+    if(lastOne()) await markReviewDone(); else reload();
+  }
+  async function reviewKeep(g){
+    await sb.from('wios_goals').update({status:'kept'}).eq('id',g.id);
+    await sb.from('wios_goals').insert({owner_id:me.id,period_type:type,period_key:key,
+      title:g.title,status:'open',kept_from:prevKey});
+    await completePromptTask();
+    if(lastOne()) await markReviewDone(); else reload();
+  }
+  async function reviewDelete(g){
+    await sb.from('wios_goals').update({status:'deleted'}).eq('id',g.id);
+    if(lastOne()) await markReviewDone(); else reload();
+  }
+  async function removeGoal(g){
+    if(!confirm('Remove this goal?')) return;
+    await sb.from('wios_goals').update({status:'deleted'}).eq('id',g.id);
+    reload();
+  }
+
+  const icon=s=>s==='completed'?'✓':s==='kept'?'→':'○';
+  const iconColor=s=>s==='completed'?'var(--green)':s==='kept'?'var(--gold)':'var(--muted2)';
+
+  return (
+    <div>
+      <Seg items={PERIOD_TYPES.map(t=>({k:t,l:PLABEL[t]}))} value={type} onChange={setGoalType}/>
+
+      {showReview&&(
+        <div className="card" style={{borderColor:'var(--gold-line)'}}>
+          <div className="tt" style={{color:'var(--gold)'}}>Close out {periodLabel(type,prevKey)}</div>
+          <div className="sub" style={{marginTop:5,marginBottom:6}}>
+            Keep moves a goal into this {PWORD[type]}. Then set the new ones below.
+          </div>
+          {prevOpen.map(g=>(
+            <div key={g.id} style={{paddingTop:11,marginTop:5,borderTop:'1px solid var(--border)'}}>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:9,overflowWrap:'anywhere'}}>{g.title}</div>
+              <div className="row" style={{gap:7}}>
+                <button className="btn btn-gold btn-sm" style={{flex:1,minWidth:0}} onClick={()=>reviewComplete(g)}>
+                  <span className="lbl2">✓ Completed</span>
+                </button>
+                <button className="btn btn-line btn-sm" style={{flex:1,minWidth:0}} onClick={()=>reviewKeep(g)}>
+                  <span className="lbl2">→ Keep</span>
+                </button>
+                <button className="btn btn-ghost btn-sm" style={{flex:'none',width:44,padding:0}}
+                  onClick={()=>reviewDelete(g)} aria-label="Drop this goal">🗑</button>
+              </div>
+            </div>
+          ))}
+          <button className="btn btn-ghost btn-sm" style={{width:'100%',marginTop:12}} onClick={markReviewDone}>
+            Done reviewing
+          </button>
+        </div>
+      )}
+
+      <div className="sect">This {PWORD[type]}, {periodLabel(type,key)}</div>
+      {cur.length>0&&(
+        <div style={{margin:'0 2px 12px'}}>
+          <div style={{fontSize:12,color:'var(--muted)'}}>{doneN} of {cur.length} completed</div>
+          <div className="pct"><i style={{width:donePct+'%'}}/></div>
+        </div>
+      )}
+      {cur.map(g=>(
+        <div key={g.id} className="crow">
+          <button className="ctap" onClick={e=>toggle(g,e)} aria-label="Toggle goal">
+            <span className={'gcheck'+(g.status==='completed'?' on':'')}>✓</span>
+          </button>
+          <div className="grow">
+            <div className={'tt'+(g.status==='completed'?' done':'')} style={{fontSize:14}}>{g.title}</div>
+            {g.kept_from&&<div style={{fontSize:11,color:'var(--muted2)',marginTop:3}}>
+              kept from {periodLabel(type,g.kept_from)}</div>}
+          </div>
+          <button className="xbtn" onClick={()=>removeGoal(g)} aria-label="Remove goal">×</button>
+        </div>
+      ))}
+      <div className="qadd" style={{marginTop:4}}>
+        <input placeholder={`Add a ${PWORD[type]} goal...`} value={text}
+          onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addGoal()}/>
+        <button className="btn btn-gold" onClick={addGoal} aria-label="Add goal">+</button>
+      </div>
+
+      {type!=='week'&&prevAll.length>0&&!showReview&&(()=>{
+        const hit=prevAll.filter(g=>g.status==='completed');
+        const miss=prevAll.filter(g=>g.status!=='completed');
+        return (
+          <div>
+            <div className="sect">Last {PWORD[type]}, {periodLabel(type,prevKey)}</div>
+            <div className="card">
+              <div style={{fontSize:12,fontWeight:700,color:'var(--green)',marginBottom:2}}>
+                Achieved {hit.length}
+              </div>
+              {hit.length===0&&<div className="mini" style={{color:'var(--muted2)'}}>None</div>}
+              {hit.map(g=><div key={g.id} className="mini">{g.title}</div>)}
+              {miss.length>0&&<>
+                <div style={{fontSize:12,fontWeight:700,color:'var(--red)',margin:'14px 0 2px'}}>
+                  Not achieved {miss.length}
+                </div>
+                {miss.map(g=>(
+                  <div key={g.id} className="mini">
+                    <span className="grow">{g.title}</span>
+                    {g.status==='kept'&&<span className="chip back fx">Kept</span>}
+                  </div>
+                ))}
+              </>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {historyKeys.length>0&&<div className="sect">History</div>}
+      {historyKeys.map(k=>{
+        const items=mine.filter(g=>g.period_key===k&&g.status!=='deleted');
+        const done=items.filter(g=>g.status==='completed').length;
+        const open=openHist===k;
+        return (
+          <div key={k} className="card tapme" onClick={()=>setOpenHist(open?null:k)}>
+            <div className="row">
+              <div className="grow">
+                <div className="tt" style={{fontSize:14}}>{periodLabel(type,k)}</div>
+                <div className="meta">{done} of {items.length} completed</div>
+              </div>
+              <span style={{color:'var(--muted2)',flex:'none'}}>{open?'▾':'▸'}</span>
+            </div>
+            {open&&(
+              <div style={{marginTop:8}}>
+                {items.map(g=>(
+                  <div key={g.id} className="mini">
+                    <span className="fx" style={{color:iconColor(g.status),fontWeight:700}}>{icon(g.status)}</span>
+                    <span className="grow">{g.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── daily ───────────────────────────────────────────────── */
+function DailyTab({me, recs, reload}){
+  const [edit,setEdit]=useState(null);
+  const today=new Date(); const todayIso=isoDate(today);
+  const due=recs.filter(r=>r.active&&isDueOn(r,today))
+    .sort((a,b)=>(a.time_hhmm||'').localeCompare(b.time_hhmm||''));
+  const left=due.filter(r=>r.last_done_date!==todayIso).length;
+  const timeOpts=useMemo(()=>{ const o=[]; for(let h=0;h<24;h++){o.push(`${pad(h)}:00`);o.push(`${pad(h)}:30`);} return o; },[]);
+
+  async function toggleDone(r,e){
+    const row=e.currentTarget.closest('.crow');
+    if(r.last_done_date===todayIso){
+      await sb.from('wios_recurring_logs').delete().eq('rec_id',r.id).eq('done_date',todayIso);
+      await sb.from('wios_recurrings').update({
+        streak:Math.max(0,(r.streak||0)-1), last_done_date:prevDueDate(r,today)
+      }).eq('id',r.id);
+    }else{
+      burst(row);
+      const prev=prevDueDate(r,today);
+      const s=(r.last_done_date&&r.last_done_date===prev)?(r.streak||0)+1:1;
+      await sb.from('wios_recurring_logs').upsert({rec_id:r.id,done_date:todayIso},{onConflict:'rec_id,done_date'});
+      await sb.from('wios_recurrings').update({
+        streak:s, best_streak:Math.max(r.best_streak||0,s), last_done_date:todayIso
+      }).eq('id',r.id);
+    }
+    reload();
+  }
+
+  function EditSheet(){
+    const isNew=edit==='new';
+    const [f,setF]=useState(isNew
+      ?{title:'',freq:'daily',days:[1,2,3,4,5],day_of_month:1,time_hhmm:'09:00',active:true}
+      :{...edit, days:edit.days||[], day_of_month:edit.day_of_month||1});
+    const [saving,setSaving]=useState(false);
+    const set=(k,v)=>setF(x=>({...x,[k]:v}));
+    const bad = !(f.title||'').trim() || (f.freq==='weekly' && !f.days.length);
+
+    async function save(){
+      if(bad||saving) return; setSaving(true);
+      const row={owner_id:me.id, title:f.title.trim(), freq:f.freq,
+        days: f.freq==='weekly'?f.days.slice().sort():null,
+        day_of_month: f.freq==='monthly'?Math.min(31,Math.max(1,+f.day_of_month||1)):null,
+        time_hhmm:f.time_hhmm, active:f.active};
+      if(isNew) await sb.from('wios_recurrings').insert(row);
+      else await sb.from('wios_recurrings').update(row).eq('id',edit.id);
+      setEdit(null); reload();
+    }
+    async function remove(){
+      if(!confirm('Delete this reminder? The streak goes with it.')) return;
+      await sb.from('wios_recurrings').delete().eq('id',edit.id);
+      setEdit(null); reload();
+    }
+    return (
+      <Sheet onClose={()=>setEdit(null)}>
+        <h3>{isNew?'New reminder':'Edit reminder'}</h3>
+        <div className="sub">A notification arrives at this time on every due day, until you check it off.</div>
+        <input placeholder="e.g. Post on Instagram" value={f.title} onChange={e=>set('title',e.target.value)}/>
+        <div className="lbl">Repeats</div>
+        <div className="seg" style={{marginBottom:0}}>
+          {['daily','weekly','monthly'].map(fr=>(
+            <button key={fr} className={f.freq===fr?'on':''} onClick={()=>set('freq',fr)}>
+              {fr[0].toUpperCase()+fr.slice(1)}
+            </button>
+          ))}
+        </div>
+        {f.freq==='weekly'&&<>
+          <div className="daychips">
+            {DOW.map((d,i)=>(
+              <button key={d} className={f.days.includes(i)?'on':''}
+                onClick={()=>set('days', f.days.includes(i)?f.days.filter(x=>x!==i):[...f.days,i])}>{d[0]}</button>
+            ))}
+          </div>
+          {!f.days.length&&<div className="err" style={{marginTop:8}}>Pick at least one day.</div>}
+        </>}
+        {f.freq==='monthly'&&<>
+          <div className="row" style={{marginTop:10}}>
+            <span className="note" style={{flex:1}}>Day of the month</span>
+            <input type="number" min="1" max="31" value={f.day_of_month} style={{width:88,flex:'none'}}
+              onChange={e=>set('day_of_month',e.target.value)}/>
+          </div>
+          <div className="note" style={{marginTop:6}}>
+            A day past the end of a short month falls on that month's last day.
+          </div>
+        </>}
+        <div className="lbl">Remind at</div>
+        <select value={f.time_hhmm} onChange={e=>set('time_hhmm',e.target.value)}>
+          {timeOpts.map(t=><option key={t} value={t}>{timeLabel(t)}</option>)}
+        </select>
+        {!isNew&&(
+          <button className="opt" style={{marginTop:14}} onClick={()=>set('active',!f.active)}>
+            <span className="g">{f.active?'⏸':'▶'}</span>
+            <span className="grow">{f.active?'Pause this reminder':'Resume this reminder'}</span>
+          </button>
+        )}
+        <div style={{height:10}}/>
+        <button className="btn btn-gold" style={{width:'100%'}} disabled={bad||saving} onClick={save}>
+          {saving?'Saving...':'Save'}
+        </button>
+        {!isNew&&<button className="btn btn-red" style={{width:'100%',marginTop:8}} onClick={remove}>Delete</button>}
+      </Sheet>
+    );
+  }
+
+  return (
+    <div>
+      <div className="sect">Today {due.length>0&&<span className="n">{left} left</span>}</div>
+      {due.length===0&&<div className="empty" style={{padding:'14px'}}>Nothing recurring is due today.</div>}
+      {due.map(r=>{
+        const done=r.last_done_date===todayIso;
+        return (
+          <div key={r.id} className="crow">
+            <button className="ctap" onClick={e=>toggleDone(r,e)} aria-label="Toggle reminder">
+              <span className={'gcheck'+(done?' on':'')}>✓</span>
+            </button>
+            <div className="grow">
+              <div className={'tt'+(done?' done':'')} style={{fontSize:14}}>{r.title}</div>
+              <div className="meta">{timeLabel(r.time_hhmm)}, {freqLabel(r)}</div>
+            </div>
+            {r.streak>0&&<span className="streak">🔥 {r.streak}</span>}
+          </div>
+        );
+      })}
+
+      <div className="sect">All reminders</div>
+      {recs.length===0&&(
+        <div className="empty" style={{padding:'14px'}}>
+          Set up the things that must not slip, like the morning Instagram post.
+        </div>
+      )}
+      {recs.map(r=>(
+        <div key={r.id} className="card tapme" onClick={()=>setEdit(r)}>
+          <div className="row">
+            <div className="grow">
+              <div className="tt" style={{fontSize:14,color:r.active?'var(--text)':'var(--muted2)'}}>{r.title}</div>
+              <div className="meta">
+                {!r.active&&<span className="chip off">Paused</span>}
+                <span>{freqLabel(r)}, {timeLabel(r.time_hhmm)}</span>
+                {r.best_streak>0&&<span>best 🔥 {r.best_streak}</span>}
+              </div>
+            </div>
+            {r.streak>0&&r.active&&<span className="streak">🔥 {r.streak}</span>}
+          </div>
+        </div>
+      ))}
+      <button className="btn btn-line" style={{width:'100%',marginTop:6}} onClick={()=>setEdit('new')}>
+        + New reminder
+      </button>
+      {edit&&<EditSheet/>}
+    </div>
+  );
+}
+
+/* ── team (admin) ────────────────────────────────────────── */
+function TeamTab({me, people, coops, members}){
+  const [data,setData]=useState(null);
+  const [open,setOpen]=useState(null);
+  useEffect(()=>{ (async()=>{
+    const [t,g,r]=await Promise.all([
+      sb.from('wios_tasks').select('*'),
+      sb.from('wios_goals').select('*'),
+      sb.from('wios_recurrings').select('*'),
+    ]);
+    setData({tasks:t.data||[], goals:g.data||[], recs:r.data||[]});
+  })(); },[]);
+  if(!data) return <div className="empty">Loading the team...</div>;
+
+  const wk=periodKey('week'), mo=periodKey('month');
+  const label=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
+
+  function stats(p){
+    const t=data.tasks.filter(x=>x.owner_id===p.id);
+    const gW=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='week'&&x.period_key===wk&&
+      x.status!=='deleted'&&x.status!=='kept');
+    const gM=data.goals.filter(x=>x.owner_id===p.id&&x.period_type==='month'&&x.period_key===mo&&
+      x.status!=='deleted'&&x.status!=='kept');
+    const rec=data.recs.filter(x=>x.owner_id===p.id&&x.active);
+    return {
+      active:t.filter(x=>x.status==='active').length,
+      waiting:t.filter(x=>x.status==='waiting').length,
+      turn:coops.filter(c=>c.status==='active'&&c.holder_id===p.id).length,
+      wPct:gW.length?Math.round(gW.filter(x=>x.status==='completed').length/gW.length*100):null,
+      mPct:gM.length?Math.round(gM.filter(x=>x.status==='completed').length/gM.length*100):null,
+      topStreak:rec.reduce((a,x)=>Math.max(a,x.streak||0),0),
+      tasks:t, goalsW:gW,
+    };
+  }
+
+  return (
+    <div>
+      <div className="note" style={{margin:'0 2px 12px'}}>Admin view. Only you can see this.</div>
+      {people.map(p=>{
+        const s=stats(p); const isOpen=open===p.id;
+        const acts=s.tasks.filter(x=>x.status==='active');
+        const waits=s.tasks.filter(x=>x.status==='waiting');
+        const cps=coops.filter(c=>c.status==='active'&&(c.holder_id===p.id||c.creator_id===p.id||
+          members.some(m=>m.coop_id===c.id&&m.user_id===p.id&&m.status!=='declined')));
+        return (
+          <div key={p.id} className="card tapme" onClick={()=>setOpen(isOpen?null:p.id)}>
+            <div className="row">
+              <div className="grow">
+                <div className="tt" style={{fontSize:15}}>{p.name}</div>
+              </div>
+              <span className="chip role">{p.role}</span>
+              {s.turn>0&&<span className="ball"/>}
+              {s.topStreak>0&&<span className="streak">🔥 {s.topStreak}</span>}
+              <span style={{color:'var(--muted2)',flex:'none'}}>{isOpen?'▾':'▸'}</span>
+            </div>
+            <div className="kv">
+              <div><div className="v">{s.active}</div><div className="k">Active</div></div>
+              <div><div className="v">{s.waiting}</div><div className="k">Waiting</div></div>
+              <div><div className="v">{s.turn}</div><div className="k">Their turn</div></div>
+            </div>
+            {(s.wPct!==null||s.mPct!==null)&&(
+              <div className="bars">
+                {s.wPct!==null&&<div className="b">Week goals {s.wPct}%<div className="pct"><i style={{width:s.wPct+'%'}}/></div></div>}
+                {s.mPct!==null&&<div className="b">Month goals {s.mPct}%<div className="pct"><i style={{width:s.mPct+'%'}}/></div></div>}
+              </div>
+            )}
+            {isOpen&&(
+              <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
+                <div className="lbl">Active</div>
+                {acts.length===0&&<div className="mini" style={{color:'var(--muted2)'}}>Nothing</div>}
+                {acts.map(x=>(
+                  <div key={x.id} className="mini">
+                    {x.urgent&&<span className="chip urgent fx">!</span>}
+                    <span className="grow">{x.title}</span>
+                  </div>
+                ))}
+                <div className="lbl">Waiting on someone</div>
+                {waits.length===0&&<div className="mini" style={{color:'var(--muted2)'}}>Nothing</div>}
+                {waits.map(x=>(
+                  <div key={x.id} className="mini">
+                    <span className="grow">{x.title}</span>
+                    <span className="fx">{daysAgo(x.waiting_since||x.created_at)}d</span>
+                  </div>
+                ))}
+                <div className="lbl">Goals this week</div>
+                {s.goalsW.length===0&&<div className="mini" style={{color:'var(--muted2)'}}>Not set yet</div>}
+                {s.goalsW.map(x=>(
+                  <div key={x.id} className="mini">
+                    <span className="fx" style={{color:x.status==='completed'?'var(--green)':'var(--muted2)',fontWeight:700}}>
+                      {x.status==='completed'?'✓':'○'}</span>
+                    <span className="grow">{x.title}</span>
+                  </div>
+                ))}
+                <div className="lbl">Coop tasks</div>
+                {cps.length===0&&<div className="mini" style={{color:'var(--muted2)'}}>Nothing</div>}
+                {cps.map(c=>(
+                  <div key={c.id} className="mini">
+                    <span className="grow">{c.title}</span>
+                    <span className="fx">{c.holder_id?label(c.holder_id):c.pending_id?`sent to ${label(c.pending_id)}`:''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── members (admin) ─────────────────────────────────────── */
+function MembersSheet({me, people, onClose, reload}){
+  const [mode,setMode]=useState('list');   // list | add | edit
+  const [target,setTarget]=useState(null);
+  const [f,setF]=useState({email:'',name:'',role:'',isAdmin:false});
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(''); const [ok,setOk]=useState('');
+
+  function startAdd(){ setF({email:'',name:'',role:'',isAdmin:false}); setErr(''); setOk(''); setMode('add'); }
+  function startEdit(p){ setTarget(p); setF({email:'',name:p.name,role:p.role,isAdmin:p.is_admin}); setErr(''); setOk(''); setMode('edit'); }
+
+  async function add(){
+    if(busy) return; setBusy(true); setErr(''); setOk('');
+    try{
+      const emailFull=toEmail(f.email);
+      const r=await callMembers({action:'add', email:emailFull, name:f.name, role:f.role, isAdmin:f.isAdmin});
+      const idPart=emailFull.split('@')[0];
+      if(r.linked) setOk(`${f.name} is in. Their account already existed, so they sign in with their usual password.`);
+      else if(r.emailSent) setOk(`${f.name} is in. A temporary password was emailed to ${emailFull}. Their ID is ${idPart}.`);
+      else setOk(`${f.name} is in. ID ${idPart}, temporary password ${r.tempPass}. The email did not go out, so pass these along.`);
+      setF({email:'',name:'',role:'',isAdmin:false});
+      await reload();
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
+  async function save(){
+    if(busy) return; setBusy(true); setErr(''); setOk('');
+    try{
+      await callMembers({action:'update', userId:target.id, name:f.name, role:f.role, isAdmin:f.isAdmin});
+      setOk('Saved.'); await reload(); setMode('list');
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
+  async function setActive(p, active){
+    if(busy) return;
+    if(!active && !confirm(`Turn off WIOS for ${p.name}? Their history stays, and their Franchise Ops account is untouched.`)) return;
+    setBusy(true); setErr(''); setOk('');
+    try{
+      await callMembers({action:'setActive', userId:p.id, active});
+      await reload();
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
+
+  const canSaveAdd = f.email.trim() && f.name.trim() && f.role.trim();
+
+  return (
+    <Sheet onClose={onClose}>
+      {mode==='list'&&<>
+        <h3>Members</h3>
+        <div className="sub">Everyone with access to WIOS. Adding someone who already uses Franchise Ops just links their existing account.</div>
+        {people.map(p=>(
+          <div key={p.id} className="crow" style={{padding:'10px 10px 10px 12px'}}>
+            <div className="grow">
+              <div className="tt" style={{fontSize:14,color:p.active?'var(--text)':'var(--muted2)'}}>{p.name}</div>
+              <div className="meta">
+                <span className="chip role">{p.role}</span>
+                {p.is_admin&&<span className="chip back">Admin</span>}
+                {!p.active&&<span className="chip off">Off</span>}
+              </div>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{flex:'none',padding:'0 12px'}}
+              onClick={()=>startEdit(p)}>Edit</button>
+          </div>
+        ))}
+        {err&&<div className="err" style={{marginTop:8}}>{err}</div>}
+        <button className="btn btn-gold" style={{width:'100%',marginTop:12}} onClick={startAdd}>
+          + Add a member
+        </button>
+      </>}
+
+      {mode==='add'&&<>
+        <h3>Add a member</h3>
+        <div className="sub">Enter the ID, the part before the @. If that account already exists it is linked with no new password. If not, a new account is created and a temporary password is emailed.</div>
+        <div className="lbl">ID</div>
+        <input type="text" autoCapitalize="none" autoCorrect="off" spellCheck="false"
+          placeholder="e.g. jane.park" value={f.email}
+          onChange={e=>setF({...f,email:e.target.value})}/>
+        <div className="note" style={{marginTop:6}}>Sign-in becomes {f.email.trim()?toEmail(f.email):'id'}.</div>
+        <div className="lbl">Full name</div>
+        <input placeholder="e.g. Jane Park" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
+        <div className="lbl">Role</div>
+        <input placeholder="e.g. CFO" maxLength="6" value={f.role}
+          onChange={e=>setF({...f,role:e.target.value.toUpperCase()})}/>
+        <div className="note" style={{marginTop:6}}>A short label. It shows up next to their name everywhere.</div>
+        <button className="opt" style={{marginTop:14}} onClick={()=>setF({...f,isAdmin:!f.isAdmin})}>
+          <span className="g" style={{color:f.isAdmin?'var(--gold)':'var(--muted2)'}}>{f.isAdmin?'◉':'○'}</span>
+          <span className="grow">Admin: sees the Team tab and manages members</span>
+        </button>
+        {err&&<div className="err" style={{marginBottom:8}}>{err}</div>}
+        {ok&&<div className="note" style={{color:'var(--green)',marginBottom:8}}>{ok}</div>}
+        <button className="btn btn-gold" style={{width:'100%'}} disabled={!canSaveAdd||busy} onClick={add}>
+          {busy?'Adding...':'Add member'}
+        </button>
+        <button className="btn btn-ghost" style={{width:'100%',marginTop:8}} onClick={()=>setMode('list')}>Back</button>
+      </>}
+
+      {mode==='edit'&&target&&<>
+        <h3>{target.name}</h3>
+        <div className="sub">Turning someone off keeps every task, goal and coop they were part of. It does not touch their Franchise Ops account.</div>
+        <div className="lbl">Full name</div>
+        <input value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
+        <div className="lbl">Role</div>
+        <input maxLength="6" value={f.role} onChange={e=>setF({...f,role:e.target.value.toUpperCase()})}/>
+        {target.id!==me.id&&(
+          <button className="opt" style={{marginTop:14}} onClick={()=>setF({...f,isAdmin:!f.isAdmin})}>
+            <span className="g" style={{color:f.isAdmin?'var(--gold)':'var(--muted2)'}}>{f.isAdmin?'◉':'○'}</span>
+            <span className="grow">Admin</span>
+          </button>
+        )}
+        {err&&<div className="err" style={{marginBottom:8}}>{err}</div>}
+        <button className="btn btn-gold" style={{width:'100%'}}
+          disabled={busy||!f.name.trim()||!f.role.trim()} onClick={save}>
+          {busy?'Saving...':'Save'}
+        </button>
+        {target.id!==me.id&&(
+          target.active
+            ? <button className="btn btn-red" style={{width:'100%',marginTop:8}} disabled={busy}
+                onClick={()=>setActive(target,false)}>Turn off WIOS access</button>
+            : <button className="btn btn-line" style={{width:'100%',marginTop:8}} disabled={busy}
+                onClick={()=>setActive(target,true)}>Turn access back on</button>
+        )}
+        <button className="btn btn-ghost" style={{width:'100%',marginTop:8}} onClick={()=>setMode('list')}>Back</button>
+      </>}
+    </Sheet>
+  );
+}
+
+/* ── settings ────────────────────────────────────────────── */
+function SettingsSheet({me, onClose, openMembers}){
+  const [msg,setMsg]=useState(''); const [err,setErr]=useState('');
+  const [subOn,setSubOn]=useState(false);
+  const [pwMode,setPwMode]=useState(false);
+  const [pw1,setPw1]=useState(''); const [pw2,setPw2]=useState('');
+  const [busy,setBusy]=useState(false);
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  const iosBlocked=isIOS&&!standalone;
+  const canPush='Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+
+  useEffect(()=>{ let dead=false; (async()=>{
+    if(!canPush) return;
+    try{
+      const reg=await Promise.race([navigator.serviceWorker.ready,
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),4000))]);
+      const s=await reg.pushManager.getSubscription();
+      if(!dead) setSubOn(!!s);
+    }catch(e){}
+  })(); return ()=>{dead=true;}; },[canPush]);
+
+  async function enable(){
+    setMsg(''); setErr(''); setBusy(true);
+    try{
+      const kr=await fetch('/.netlify/functions/notify');
+      const {publicKey}=await kr.json();
+      if(!publicKey) throw new Error('Push keys are not set on the server yet.');
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted') throw new Error('Notifications are blocked for WIOS in your phone settings.');
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToU8(publicKey)});
+      const j=sub.toJSON();
+      const {error}=await sb.from('wios_push_subs').upsert(
+        {user_id:me.id, endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth},
+        {onConflict:'endpoint'});
+      if(error) throw error;
+      setSubOn(true); setMsg('Notifications are on for this device.');
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
+  async function disable(){
+    setMsg(''); setErr(''); setBusy(true);
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      const s=await reg.pushManager.getSubscription();
+      if(s){ await sb.from('wios_push_subs').delete().eq('endpoint',s.endpoint); await s.unsubscribe(); }
+      setSubOn(false); setMsg('Notifications are off for this device.');
+    }catch(e){ setErr(e.message); }
+    setBusy(false);
+  }
+  async function changePw(){
+    setMsg(''); setErr('');
+    if(pw1.length<8){ setErr('Use at least 8 characters.'); return; }
+    if(pw1!==pw2){ setErr('The two passwords do not match.'); return; }
+    setBusy(true);
+    const {error}=await sb.auth.updateUser({password:pw1});
+    if(error) setErr(error.message);
+    else { setMsg('Password changed.'); setPw1(''); setPw2(''); setPwMode(false); }
+    setBusy(false);
+  }
+
+  return (
+    <Sheet onClose={onClose}>
+      <h3>{me.name}</h3>
+      <div className="sub">{me.role}{me.is_admin?', admin':''}</div>
+
+      <div className="lbl">Notifications</div>
+      {iosBlocked?(
+        <div className="note">
+          On iPhone, install WIOS first: tap Share in Safari, then Add to Home Screen. Open it from the
+          Home Screen and come back here to switch notifications on.
+        </div>
+      ):!canPush?(
+        <div className="note">This browser cannot do notifications.</div>
+      ):subOn?(
+        <button className="btn btn-ghost" style={{width:'100%'}} disabled={busy} onClick={disable}>
+          Turn off on this device
+        </button>
+      ):(
+        <button className="btn btn-gold" style={{width:'100%'}} disabled={busy} onClick={enable}>
+          Turn on for this device
+        </button>
+      )}
+
+      {me.is_admin&&<>
+        <div className="lbl">Team</div>
+        <button className="opt" onClick={openMembers}>
+          <span className="g">👥</span><span className="grow">Members</span><span>›</span>
+        </button>
+      </>}
+
+      <div className="lbl">Account</div>
+      {!pwMode?(
+        <button className="opt" onClick={()=>{setPwMode(true);setErr('');setMsg('');}}>
+          <span className="g">🔑</span><span className="grow">Change password</span><span>›</span>
+        </button>
+      ):(
+        <div>
+          <input type="password" placeholder="New password" autoComplete="new-password"
+            value={pw1} onChange={e=>setPw1(e.target.value)}/>
+          <div style={{height:8}}/>
+          <input type="password" placeholder="New password again" autoComplete="new-password"
+            value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==='Enter'&&changePw()}/>
+          <div style={{height:10}}/>
+          <div className="row" style={{gap:8}}>
+            <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={()=>{setPwMode(false);setPw1('');setPw2('');}}>
+              Cancel
+            </button>
+            <button className="btn btn-gold btn-sm" style={{flex:1}} disabled={busy} onClick={changePw}>
+              {busy?'Saving...':'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {err&&<div className="err" style={{marginTop:10}}>{err}</div>}
+      {msg&&<div className="note" style={{color:'var(--green)',marginTop:10}}>{msg}</div>}
+
+      <button className="btn btn-red" style={{width:'100%',marginTop:16}}
+        onClick={async()=>{ await sb.auth.signOut(); location.reload(); }}>
+        Sign out
+      </button>
+    </Sheet>
+  );
+}
+
+/* ── app shell ───────────────────────────────────────────── */
+function App(){
+  const [session,setSession]=useState(undefined);
+  const [me,setMe]=useState(null);
+  const [gate,setGate]=useState(null);        // 'none' | 'off'
+  const [people,setPeople]=useState([]);      // active members only
+  const [allPeople,setAllPeople]=useState([]); // incl. deactivated, for the Members sheet
+  const [tasks,setTasks]=useState([]); const [coops,setCoops]=useState([]); const [members,setMembers]=useState([]);
+  const [goals,setGoals]=useState([]); const [gps,setGps]=useState([]); const [recs,setRecs]=useState([]);
+  const [tab,setTab]=useState('tasks');
+  const [goalType,setGoalType]=useState('week');
+  const [openCoopId,setOpenCoopId]=useState(null);
+  const [showSettings,setShowSettings]=useState(false);
+  const [showMembers,setShowMembers]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const ensured=useRef(false);
+
+  useEffect(()=>{
+    sb.auth.getSession().then(({data})=>setSession(data.session||null));
+    const {data:sub}=sb.auth.onAuthStateChange((_e,s)=>setSession(s));
+    return ()=>sub.subscription.unsubscribe();
+  },[]);
+
+  const load=useCallback(async()=>{
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user) return;
+    setBusy(true);
+    const [pRes,tRes,cRes,mRes,gRes,gpRes,rRes]=await Promise.all([
+      sb.from('wios_profiles').select('*').order('created_at'),
+      sb.from('wios_tasks').select('*').eq('owner_id',user.id),
+      sb.from('wios_coops').select('*').order('created_at',{ascending:false}),
+      sb.from('wios_coop_members').select('*'),
+      sb.from('wios_goals').select('*').eq('owner_id',user.id),
+      sb.from('wios_goal_periods').select('*').eq('user_id',user.id),
+      sb.from('wios_recurrings').select('*').eq('owner_id',user.id).order('time_hhmm'),
+    ]);
+    const all=pRes.data||[];
+    const mine=all.find(p=>p.id===user.id);
+    if(!mine){ setGate('none'); setBusy(false); return; }
+    if(!mine.active){ setGate('off'); setMe(mine); setBusy(false); return; }
+    setGate(null); setMe(mine);
+    setAllPeople(all);
+    setPeople(all.filter(p=>p.active));
+    setTasks(tRes.data||[]); setCoops(cRes.data||[]); setMembers(mRes.data||[]);
+    setGoals(gRes.data||[]); setGps(gpRes.data||[]); setRecs(rRes.data||[]);
+    setBusy(false);
+
+    // safety net so goal prompts exist even before the first cron run
+    if(!ensured.current){
+      ensured.current=true;
+      let added=false;
+      for(const type of PERIOD_TYPES){
+        const key=periodKey(type);
+        if((gpRes.data||[]).some(x=>x.period_type===type&&x.period_key===key)) continue;
+        await sb.from('wios_goal_periods').upsert(
+          {user_id:user.id,period_type:type,period_key:key,prompted:true},
+          {onConflict:'user_id,period_type,period_key',ignoreDuplicates:true});
+        const ref=`${type}:${key}`;
+        if(!(tRes.data||[]).some(x=>x.system_ref===ref)){
+          await sb.from('wios_tasks').insert({owner_id:user.id,
+            title:`Review last period and set your ${PLABEL[type]} goals`,
+            status:'active',urgent:true,is_system:true,system_kind:'goal_prompt',system_ref:ref})
+            .then(()=>{added=true;},()=>{});
+        }
+      }
+      if(added) load();
+    }
+  },[]);
+
+  useEffect(()=>{ if(session) load(); },[session,load]);
+  useEffect(()=>{
+    if(!session) return;
+    const f=()=>{ if(document.visibilityState==='visible') load(); };
+    document.addEventListener('visibilitychange',f); window.addEventListener('focus',f);
+    const iv=setInterval(f,60000);
+    return ()=>{ document.removeEventListener('visibilitychange',f);
+      window.removeEventListener('focus',f); clearInterval(iv); };
+  },[session,load]);
+
+  const myTurn=useMemo(()=>me?coops.filter(c=>c.status==='active'&&c.holder_id===me.id).length:0,[coops,me]);
+  const requests=useMemo(()=>me?coops.filter(c=>c.status==='active'&&
+    members.some(m=>m.coop_id===c.id&&m.user_id===me.id&&m.status==='pending')).length:0,[coops,members,me]);
+  const remindedN=useMemo(()=>tasks.filter(t=>t.status==='active'&&t.reminded).length,[tasks]);
+  const coopBadge=myTurn+requests;
+
+  useEffect(()=>{
+    const n=coopBadge+remindedN;
+    if('setAppBadge' in navigator){
+      if(n>0) navigator.setAppBadge(n).catch(()=>{});
+      else if('clearAppBadge' in navigator) navigator.clearAppBadge().catch(()=>{});
+    }
+  },[coopBadge,remindedN]);
+
+  if(session===undefined) return <div className="empty" style={{paddingTop:120}}>Loading...</div>;
+  if(!session) return <Login/>;
+  if(gate) return (
+    <div className="auth">
+      <div className="wordmark" style={{textAlign:'center',fontSize:36}}>WIOS</div>
+      <div className="empty">
+        {gate==='none'
+          ? 'This account is not set up in WIOS yet. Ask John to add you, then sign in again.'
+          : 'Your WIOS access is turned off. Ask John to turn it back on.'}
+      </div>
+      <button className="btn btn-ghost" onClick={async()=>{ await sb.auth.signOut(); location.reload(); }}>
+        Sign out
+      </button>
+    </div>
+  );
+  if(!me) return <div className="empty" style={{paddingTop:120}}>Loading...</div>;
+
+  const tabs=[
+    {k:'tasks', l:'Tasks', g:'☰', badge:remindedN},
+    {k:'coop',  l:'Coop',  g:'⇄', badge:coopBadge},
+    {k:'goals', l:'Goals', g:'◎', badge:0},
+    {k:'daily', l:'Daily', g:'↻', badge:0},
+  ];
+  if(me.is_admin) tabs.push({k:'team', l:'Team', g:'👥', badge:0});
+
+  return (
+    <div>
+      <div className="hdr">
+        <div className="grow">
+          <div className="wordmark">WIOS</div>
+          <div className="sub">Ugly Donuts &amp; Corn Dogs</div>
+        </div>
+        <button className="iconbtn" onClick={load} aria-label="Refresh">
+          <span className={busy?'spin':''}>↻</span>
+        </button>
+        <button className="iconbtn" onClick={()=>setShowSettings(true)} aria-label="Settings">⚙</button>
+      </div>
+
+      <div className="main">
+        {tab==='tasks'&&<TasksTab me={me} people={people} tasks={tasks} coopsMyTurn={myTurn}
+          reload={load} gotoCoop={()=>setTab('coop')}
+          gotoGoals={tp=>{ setGoalType(tp); setTab('goals'); }}/>}
+        {tab==='coop'&&<CoopTab me={me} people={people} coops={coops} members={members}
+          reload={load} openId={openCoopId} setOpenId={setOpenCoopId}/>}
+        {tab==='goals'&&<GoalsTab me={me} goals={goals} gps={gps} reload={load}
+          goalType={goalType} setGoalType={setGoalType} tasks={tasks}/>}
+        {tab==='daily'&&<DailyTab me={me} recs={recs} reload={load}/>}
+        {tab==='team'&&me.is_admin&&<TeamTab me={me} people={people} coops={coops} members={members}/>}
+      </div>
+
+      <div className="tabbar">
+        {tabs.map(t=>(
+          <button key={t.k} className={tab===t.k?'on':''} onClick={()=>setTab(t.k)}>
+            <span className="gwrap">
+              <span className="glyph">{t.g}</span>
+              {t.badge>0&&<span className="bdg">{t.badge>9?'9+':t.badge}</span>}
+            </span>
+            {t.l}
+          </button>
+        ))}
+      </div>
+
+      {showSettings&&<SettingsSheet me={me} onClose={()=>setShowSettings(false)}
+        openMembers={()=>{ setShowSettings(false); setShowMembers(true); }}/>}
+      {showMembers&&<MembersSheet me={me} people={allPeople}
+        onClose={()=>setShowMembers(false)} reload={load}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions."cron"]
+  schedule = "*/30 * * * *"

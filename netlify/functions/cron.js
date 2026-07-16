@@ -1,0 +1,150 @@
+// ============================================================
+// WIOS scheduled function. Runs every 30 minutes (netlify.toml).
+// 1. Waiting tasks whose remind time arrived  -> back to Active + push
+// 2. Scheduled tasks whose date arrived       -> Active + push
+// 3. Recurring reminders due now (ET)         -> push (once per day)
+// 4. New goal periods (week/month/semester/yr)-> urgent goal prompt task + push
+// ============================================================
+const { pushToUsers, makeSb } = require('./lib-push.js');
+
+const TZ = 'America/New_York';
+
+function etParts(d = new Date()) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short',
+  });
+  const p = {};
+  for (const part of fmt.formatToParts(d)) p[part.type] = part.value;
+  const dowMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    dateStr: `${p.year}-${p.month}-${p.day}`,
+    hhmm: `${p.hour === '24' ? '00' : p.hour}:${p.minute}`,
+    dow: dowMap[p.weekday],
+    y: +p.year, m: +p.month, day: +p.day,
+  };
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
+function periodKeys(et) {
+  // week key = Monday of the current ET week, as YYYY-MM-DD
+  const base = new Date(Date.UTC(et.y, et.m - 1, et.day));
+  const shift = (et.dow + 6) % 7; // days since Monday
+  base.setUTCDate(base.getUTCDate() - shift);
+  const week = `${base.getUTCFullYear()}-${pad(base.getUTCMonth() + 1)}-${pad(base.getUTCDate())}`;
+  return {
+    week,
+    month: `${et.y}-${pad(et.m)}`,
+    semester: `${et.y}-H${et.m <= 6 ? 1 : 2}`,
+    year: String(et.y),
+  };
+}
+
+const PERIOD_LABEL = { week: 'Weekly', month: 'Monthly', semester: 'Semester', year: 'Yearly' };
+
+function lastDayOfMonth(y, m) { return new Date(y, m, 0).getDate(); } // m = 1..12
+
+function recurringDueToday(rec, et) {
+  if (rec.freq === 'daily') return true;
+  if (rec.freq === 'weekly') return Array.isArray(rec.days) && rec.days.includes(et.dow);
+  if (rec.freq === 'monthly') {
+    const dom = Math.min(rec.day_of_month || 1, lastDayOfMonth(et.y, et.m));
+    return et.day === dom;
+  }
+  return false;
+}
+
+exports.handler = async () => {
+  const env = process.env;
+  const sb = makeSb(env);
+  const nowIso = new Date().toISOString();
+  const et = etParts();
+  const report = { waiting: 0, scheduled: 0, recurring: 0, goalPrompts: 0 };
+
+  try {
+    // ── 1. Waiting tasks due back ───────────────────────────
+    const waiting = await sb(`wios_tasks?status=eq.waiting&remind_at=lte.${encodeURIComponent(nowIso)}&select=id,owner_id,title`);
+    for (const t of waiting) {
+      await sb(`wios_tasks?id=eq.${t.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active', reminded: true }),
+      });
+      await pushToUsers([t.owner_id], {
+        title: 'Follow-up reminder', body: t.title, tag: 'wios-remind', url: '/',
+      }, env);
+      report.waiting++;
+    }
+
+    // ── 2. Scheduled tasks due ──────────────────────────────
+    const scheduled = await sb(`wios_tasks?status=eq.scheduled&scheduled_at=lte.${encodeURIComponent(nowIso)}&select=id,owner_id,title`);
+    for (const t of scheduled) {
+      await sb(`wios_tasks?id=eq.${t.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active', reminded: true }),
+      });
+      await pushToUsers([t.owner_id], {
+        title: 'Scheduled task is up', body: t.title, tag: 'wios-sched', url: '/',
+      }, env);
+      report.scheduled++;
+    }
+
+    // ── 3. Recurring reminders ──────────────────────────────
+    const recs = await sb('wios_recurrings?active=eq.true&select=*');
+    for (const r of recs) {
+      if (!recurringDueToday(r, et)) continue;
+      if (r.last_done_date === et.dateStr) continue;   // already done today
+      if (r.last_pushed_date === et.dateStr) continue; // already pushed today
+      if ((r.time_hhmm || '09:00') > et.hhmm) continue; // not yet time
+      await pushToUsers([r.owner_id], {
+        title: 'Daily reminder', body: r.title, tag: 'wios-rec', url: '/',
+      }, env);
+      await sb(`wios_recurrings?id=eq.${r.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ last_pushed_date: et.dateStr }),
+      });
+      report.recurring++;
+    }
+
+    // ── 4. Goal period prompts ──────────────────────────────
+    const keys = periodKeys(et);
+    const users = await sb('wios_profiles?active=eq.true&select=id,name');
+    for (const u of users) {
+      for (const type of ['week', 'month', 'semester', 'year']) {
+        const key = keys[type];
+        const existing = await sb(`wios_goal_periods?user_id=eq.${u.id}&period_type=eq.${type}&period_key=eq.${encodeURIComponent(key)}&select=user_id`);
+        if (existing.length) continue;
+        // new period for this user: record it, create urgent prompt task, push
+        await sb('wios_goal_periods', {
+          method: 'POST',
+          headers: { 'Prefer': 'resolution=ignore-duplicates' },
+          body: JSON.stringify({ user_id: u.id, period_type: type, period_key: key, prompted: true }),
+        });
+        const sysRef = `${type}:${key}`;
+        try {
+          await sb('wios_tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+              owner_id: u.id,
+              title: `Review last period & set your ${PERIOD_LABEL[type]} goals`,
+              status: 'active', urgent: true,
+              is_system: true, system_kind: 'goal_prompt', system_ref: sysRef,
+            }),
+          });
+        } catch (e) {
+          // unique index guard: prompt already exists, fine
+        }
+        await pushToUsers([u.id], {
+          title: `${PERIOD_LABEL[type]} goals`, body: 'Time to review last period and set new goals.', tag: 'wios-goal', url: '/',
+        }, env);
+        report.goalPrompts++;
+      }
+    }
+
+    console.log('cron report', JSON.stringify(report), 'ET', et.dateStr, et.hhmm);
+    return { statusCode: 200, body: JSON.stringify(report) };
+  } catch (e) {
+    console.error('cron error', e);
+    return { statusCode: 500, body: e.message };
+  }
+};
