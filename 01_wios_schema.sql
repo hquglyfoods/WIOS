@@ -251,6 +251,41 @@ create table if not exists public.wios_notifications (
 );
 create index if not exists wios_notif_idx on public.wios_notifications(user_id, created_at desc);
 
+-- Weekly coaching bot: one thread per person. The Monday feedback and the back-and-forth
+-- chat both live here. week_key is the Monday (YYYY-MM-DD) the thread belongs to. Rows older
+-- than 4 weeks are pruned by the coach function; nothing else deletes them.
+create table if not exists public.wios_coaching_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.wios_profiles(id) on delete cascade,
+  role text not null,                        -- 'coach' | 'user'
+  content text not null,
+  week_key text not null,                    -- Monday of the week this belongs to, YYYY-MM-DD
+  is_weekly boolean not null default false,  -- true for the auto Monday feedback message
+  created_at timestamptz not null default now()
+);
+create index if not exists wios_coach_idx on public.wios_coaching_messages(user_id, created_at);
+create unique index if not exists wios_coach_weekly_uq
+  on public.wios_coaching_messages(user_id, week_key) where is_weekly;
+
+-- CEO assistant brief: an admin-only weekly report that summarizes every C-level's week
+-- (their work plus what their coach told them and whether they acted on it), and the chat
+-- about it. owner_id is the admin who owns this brief thread. Kept forever; the app shows
+-- the last 4 weeks of the chat window.
+create table if not exists public.wios_ceo_brief_messages (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.wios_profiles(id) on delete cascade,
+  role text not null,                        -- 'assistant' | 'user'
+  content text not null,
+  week_key text not null,
+  is_weekly boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists wios_ceobrief_idx on public.wios_ceo_brief_messages(owner_id, created_at);
+create unique index if not exists wios_ceobrief_weekly_uq
+  on public.wios_ceo_brief_messages(owner_id, week_key) where is_weekly;
+
+
+
 -- ============================================================
 -- Helpers (security definer avoids RLS policy recursion)
 -- ============================================================
@@ -288,6 +323,8 @@ alter table public.wios_recurrings enable row level security;
 alter table public.wios_recurring_logs enable row level security;
 alter table public.wios_push_subs enable row level security;
 alter table public.wios_notifications enable row level security;
+alter table public.wios_coaching_messages enable row level security;
+alter table public.wios_ceo_brief_messages enable row level security;
 
 -- profiles: every active WIOS user sees the roster (needed to address teammates).
 -- Members are added and deactivated by the wios-members function using the
@@ -492,6 +529,15 @@ create policy wios_push_all on public.wios_push_subs
 drop policy if exists wios_notif_all on public.wios_notifications;
 create policy wios_notif_all on public.wios_notifications
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists wios_coach_all on public.wios_coaching_messages;
+create policy wios_coach_all on public.wios_coaching_messages
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists wios_ceobrief_all on public.wios_ceo_brief_messages;
+create policy wios_ceobrief_all on public.wios_ceo_brief_messages
+  for all using (owner_id = auth.uid() and public.wios_is_admin())
+  with check (owner_id = auth.uid() and public.wios_is_admin());
 
 -- retire the old helper name if an earlier install created it
 drop function if exists public.wios_is_ceo();
