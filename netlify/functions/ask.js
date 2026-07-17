@@ -9,6 +9,7 @@
 //     the model never receives other people's rows).
 // ============================================================
 const { makeSb } = require('./lib-push.js');
+const { ROLES_DOC } = require('./roles-doc.js');
 
 const SUPA_URL = 'https://xttqxjuunuchlxjrknyt.supabase.co';
 const ANON_KEY = 'sb_publishable_qL2xlkjIkIWGOkzaDitIJw_3iRNx9dA';
@@ -158,19 +159,16 @@ Be concise and specific. When the user asks "when" something happened, cite the 
 When useful, group by date or by person. Do not invent tasks, dates, or people.
 Never use em dashes. Use commas, periods, or parentheses instead.
 
-ROLE-FIT QUESTIONS: If the user asks whether their work fits their role (for example "am I doing what fits my role as COO"), do a grounded analysis of the actual tasks, goals, and coop work in the records:
-- Look at what the tasks are really about, and sort them into (a) role-level work that only a person in that seat should own (strategy, building systems and standards, developing people, planning, cross-functional decisions) versus (b) lower-level or day-to-day work that a manager or staffer could own (individual store operations, one-off firefighting, routine fixes).
-- Say honestly where their time is actually going based on the pattern you see. If most of the work is operational firefighting and there is little that grows the role or the person, name that directly and kindly.
-- Use the reference below for what each seat should focus on. Judge against the role the user names, not against a generic idea of "busy".
-- Point to a few concrete example tasks from the records to support what you say (do not invent any). End with 2 or 3 specific, doable shifts that would move them toward true role-level work. Keep it constructive and peer-to-peer, not harsh.
-- Only give this analysis when they ask for it. For plain lookups, just answer the lookup.
+ROLE-FIT AND GROWTH QUESTIONS: If the user asks whether their work fits their role, how to grow into it, what they are missing, or how to become excellent in their seat (for example "am I doing what fits my role as COO", "how do I grow as COO", "what am I missing"), give a grounded coaching answer:
+- Anchor on the ROLE REFERENCE below, which is this company's own definition of each seat: its responsibilities, direction, what to master, the level to reach, and the standards to hit. Judge the person against their OWN seat's definition, not a generic idea of being busy.
+- Look at the person's actual tasks, goals, and coop work in the records. Sort what they are really spending time on into (a) true role-level work that grows the seat (building systems, standards, playbooks, training and developing people, strategy, planning) versus (b) lower-level day-to-day or firefighting work that a manager or staffer could own. Cite a few real example tasks from the records (never invent any).
+- Say honestly where their time is actually going. If most of it is low-level firefighting with little that builds the system or grows them, name it directly and kindly. For the COO specifically, distinguish real COO work (building the QA and audit system, the certification program, developing store leaders) from general-manager firefighting on single stores.
+- Then coach forward, using the reference but not limited to it: what excellent looks like for this seat, the specific gaps between where they are now and that level, what they should master next, and 2 to 4 concrete, doable shifts or next steps that would move them toward true role-level work and toward the standards their seat is supposed to hit. Be specific to what the records show, not generic advice.
+- You may reason beyond the document to give genuinely useful growth guidance, as long as it is consistent with the company's franchising-only, build-the-system-so-it-runs-without-you direction. Keep the tone constructive and peer-to-peer, a trusted advisor, not harsh and not flattering.
+- Only give this fuller analysis when they ask about role fit or growth. For plain lookups ("what did I do last week"), just answer the lookup.
 
-ROLE REFERENCE (what each seat should mostly be doing):
-- CEO: vision and direction, fundraising and investor and lender relationships, franchise growth and major partnerships, hiring and aligning the leadership team.
-- CBO (Brand and Creative): brand, menu development, store design and experience, creative direction and standards.
-- CMO (Marketing): demand and traffic, campaigns, content and channels, customer growth and loyalty.
-- COO (Operations): building repeatable operating systems and standards across stores, training and developing store leaders, unit economics and process, scaling operations. NOT acting as a general manager who only puts out fires at individual stores. If the COO's record is mostly single-store operational problems with little system-building or people-development, that is a sign they are stuck in GM work instead of the COO role.
-- CPO (Product or People, use whichever the records suggest): if product, the supply chain, ingredients, and product quality and consistency; if people, hiring systems, HR, culture, and team development.
+ROLE REFERENCE (the company's own definition of each seat, use as the anchor):
+${ROLES_DOC}
 
 RECORDS:
 ${dataBlock}`;
@@ -188,7 +186,7 @@ ${dataBlock}`;
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, system, messages }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 2000, system, messages }),
     });
 
     if (!aiRes.ok) {
