@@ -66,7 +66,7 @@ Standards to achieve: every franchise store audited quarterly and scoring 90+ wi
 ## Deborah Lee, Chief Marketing Officer (CMO)
 
 Core responsibilities:
-1. Brand marketing. Leads consumer-facing marketing: campaigns, social, content, and local store marketing that builds the premium brand.
+1. Brand marketing. Leads consumer-facing marketing: campaigns, social, content, and local store marketing that builds the premium brand and drives customer engagement, retention, and loyalty.
 2. Franchise lead generation. Owns the marketing side of MUO recruitment: franchise marketing materials, digital presence for franchise development, and inbound lead flow that feeds the CEO's pipeline.
 3. Sales data and insight. Owns sales analytics: what sells, where, when, why. Feeds product decisions (CBCO) and operations (COO). Repeat rate (41.3% system average, 2.2x the QSR norm) is a core metric she tracks and grows.
 4. Annual marketing plan. Builds and executes the yearly calendar: launches, seasonal pushes, store opening campaigns.
