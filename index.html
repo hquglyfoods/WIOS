@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>WIOS</title>
-<link rel="manifest" href="/manifest.webmanifest">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WIOS">
+<title>WIOS</title>
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,19 +29,21 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').c
   --text:#1A2A3A;--muted:#6B7C8F;--muted2:#9AAABB;
   --gold:#2E6FD6;--gold-soft:rgba(46,111,214,.10);--gold-line:rgba(46,111,214,.40);
   --red:#E0574F;--green:#27A567;--blue:#2E6FD6;--purple:#7A5CD0;
-  --tap:44px;
+  --amber:#E0912F;--amber-soft:rgba(224,145,47,.12);--amber-line:rgba(224,145,47,.38);
+  --tap:44px;--kb:0px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;background:#E7EDF4;overscroll-behavior-y:none;}
 body{font-family:'Inter',-apple-system,system-ui,sans-serif;color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;}
 #shell{max-width:480px;margin:0 auto;min-height:100dvh;background:var(--bg);position:relative;}
 @media(min-width:520px){#shell{border-left:1px solid #DCE4EE;border-right:1px solid #DCE4EE;}}
-input,select,textarea,button{font-family:inherit;font-size:15px;color:var(--text);}
+input,select,textarea,button{font-family:inherit;font-size:16px;color:var(--text);}
 input,select,textarea{background:var(--panel);border:1px solid var(--border2);border-radius:10px;
-  padding:12px;width:100%;outline:none;min-height:var(--tap);}
+  padding:12px;width:100%;outline:none;min-height:var(--tap);font-size:16px;}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 textarea{resize:none;}
 button{cursor:pointer;border:none;background:none;padding:0;}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
 
 /* header */
@@ -63,6 +66,7 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:40;
   background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
   display:flex;padding:7px 4px calc(env(safe-area-inset-bottom) + 7px);box-shadow:0 -1px 8px rgba(26,42,58,.06);}
+body.kb-open .tabbar{transform:translateX(-50%) translateY(120%);}   /* get out of the way of the keyboard */
 .tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:6px 1px 4px;color:var(--muted2);font-size:10px;font-weight:600;letter-spacing:.01em;
   border-radius:12px;min-height:var(--tap);}
@@ -228,8 +232,10 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 /* ask tab */
 .askwrap{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:480px;
   top:calc(env(safe-area-inset-top) + 60px);
-  bottom:calc(env(safe-area-inset-bottom) + 58px);
-  display:flex;flex-direction:column;padding:12px 14px 0;background:var(--bg);z-index:5;}
+  bottom:calc(env(safe-area-inset-bottom) + 58px + var(--kb, 0px));
+  display:flex;flex-direction:column;padding:12px 14px 0;background:var(--bg);z-index:5;
+  transition:bottom .18s ease;}
+body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + 6px);}   /* input rides on top of the keyboard */
 .askscroll{flex:1;overflow-y:auto;padding:4px 2px 8px;display:flex;flex-direction:column;gap:12px;}
 .askintro{margin:auto;text-align:center;padding:20px 10px;}
 .askglyph{font-size:32px;color:var(--gold);margin-bottom:10px;}
@@ -274,6 +280,15 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .card.task.dragging{opacity:.4;}
 .card.task.dragover{box-shadow:0 0 0 2px var(--gold);}
 .draghandle{flex:none;color:var(--muted2);font-size:18px;cursor:grab;padding:0 4px;touch-action:none;}
+/* card action buttons: mark-done (green) + delete (red), always on the right */
+.cardacts{display:flex;align-items:center;gap:6px;flex:none;margin:-2px -4px -2px 6px;}
+.actbtn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;background:var(--panel);}
+.actbtn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.actbtn.done{color:var(--green);box-shadow:inset 0 0 0 1px rgba(39,165,103,.35);}
+.actbtn.done:active{background:var(--green);color:#fff;}
+.actbtn.del{color:var(--red);box-shadow:inset 0 0 0 1px rgba(224,87,79,.35);}
+.actbtn.del:active{background:#FCEBEA;}
 /* generic inline icon */
 .ic{display:inline-flex;align-items:center;justify-content:center;}
 .ic svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
@@ -309,11 +324,11 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 
 /* this-week goal strip */
 .goalstrip{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 13px;margin-bottom:11px;
-  border-radius:14px;background:var(--gold-soft);box-shadow:inset 0 0 0 1px var(--gold-line);color:var(--text);}
-.goalstrip:active{background:rgba(46,111,214,.16);}
-.gschip{flex:none;width:26px;height:26px;color:var(--gold);display:flex;align-items:center;justify-content:center;}
+  border-radius:14px;background:var(--amber-soft);box-shadow:inset 0 0 0 1px var(--amber-line);color:var(--text);}
+.goalstrip:active{background:rgba(224,145,47,.2);}
+.gschip{flex:none;width:26px;height:26px;color:var(--amber);display:flex;align-items:center;justify-content:center;}
 .gschip svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.9;fill:none;}
-.gshead{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.02em;}
+.gshead{font-size:12px;font-weight:700;color:var(--amber);letter-spacing:.02em;}
 .gsbody{font-size:13px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* add task / add coop row */
@@ -353,6 +368,10 @@ button{cursor:pointer;border:none;background:none;padding:0;}
 .handoffbar{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;
   background:var(--gold-soft);box-shadow:inset 0 0 0 1px var(--gold-line);margin-bottom:10px;}
 .handoffbar .ic{flex:none;}
+
+.ic.bigbell svg{width:38px;height:38px;stroke-width:1.6;}
+.pcheck{width:15px;height:15px;display:inline-flex;margin-right:2px;color:var(--gold);}
+.pcheck svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
@@ -521,13 +540,15 @@ function Seg({items, value, onChange}){
     </div>
   );
 }
-function PersonGrid({people, value, onChange, exclude}){
+function PersonGrid({people, value, onChange, exclude, multi}){
   const list=people.filter(p=>p.id!==exclude);
   if(!list.length) return <div className="note" style={{marginBottom:10}}>No other members yet.</div>;
+  const on=id=> multi ? (Array.isArray(value)&&value.includes(id)) : value===id;
   return (
     <div className="pgrid">
       {list.map(p=>(
-        <button key={p.id} className={'pbtn'+(value===p.id?' on':'')} onClick={()=>onChange(p.id)}>
+        <button key={p.id} className={'pbtn'+(on(p.id)?' on':'')} onClick={()=>onChange(p.id)}>
+          {multi&&<span className="pcheck">{on(p.id)?ICON.check:''}</span>}
           {p.role} {first(p.name)}
         </button>
       ))}
@@ -626,7 +647,7 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
   const [mode,setMode]=useState('main');
   const [customN,setCustomN]=useState(2); const [customU,setCustomU]=useState('days');
   const [schedAt,setSchedAt]=useState('');
-  const [sendTo,setSendTo]=useState(null); const [sendMsg,setSendMsg]=useState('');
+  const [sendTo,setSendTo]=useState([]); const [sendMsg,setSendMsg]=useState('');
   const [busy,setBusy]=useState(false);
   const [sortMode,setSortMode]=useState(false);
   const [dragId,setDragId]=useState(null);
@@ -640,7 +661,13 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
   const [newTaskTitle,setNewTaskTitle]=useState('');
   const [newTaskUrgent,setNewTaskUrgent]=useState(false);
   const [newTaskDue,setNewTaskDue]=useState('');
+  const [newTaskLater,setNewTaskLater]=useState(false);
+  const [newTaskLaterAt,setNewTaskLaterAt]=useState('');
   const [declining,setDeclining]=useState(null); const [declineMsg,setDeclineMsg]=useState('');
+  // Optimistic removal: hide a task the instant it is deleted or marked done,
+  // so the list updates even before the server round-trip / reload completes.
+  const [hiddenIds,setHiddenIds]=useState(()=>new Set());
+  const hide=id=>setHiddenIds(s=>{ const n=new Set(s); n.add(id); return n; });
 
   const cLabel=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
   const myM=id=>members.find(m=>m.coop_id===id&&m.user_id===me.id);
@@ -669,7 +696,7 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
 
   const lists=useMemo(()=>{
     const by={active:[],waiting:[],scheduled:[],done:[]};
-    tasks.forEach(t=>{ (by[t.status]||by.active).push(t); });
+    tasks.forEach(t=>{ if(hiddenIds.has(t.id)) return; (by[t.status]||by.active).push(t); });
     by.active.sort((a,b)=>{
       const ao=a.sort_order, bo=b.sort_order;
       const aHas=ao!==null&&ao!==undefined, bHas=bo!==null&&bo!==undefined;
@@ -683,7 +710,7 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
     by.done.sort((a,b)=>new Date(b.completed_at||0)-new Date(a.completed_at||0));
     by.done=by.done.slice(0,40);
     return by;
-  },[tasks]);
+  },[tasks,hiddenIds]);
 
   async function addQuick(){
     const title=quick.trim(); if(!title) return;
@@ -693,11 +720,19 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
   }
   async function createTask(){
     const title=newTaskTitle.trim(); if(!title||busy) return;
+    if(newTaskLater&&!newTaskLaterAt){ alert('Pick a date for "Set it for later".'); return; }
     setBusy(true);
     try{
-      await sb.from('wios_tasks').insert({owner_id:me.id, title, status:'active', urgent:newTaskUrgent,
-        due_at: newTaskDue? new Date(newTaskDue).toISOString() : null});
+      const row={owner_id:me.id, title, urgent:newTaskUrgent,
+        due_at: newTaskDue? new Date(newTaskDue).toISOString() : null};
+      if(newTaskLater&&newTaskLaterAt){
+        row.status='scheduled'; row.scheduled_at=new Date(newTaskLaterAt).toISOString();
+      }else{
+        row.status='active';
+      }
+      await sb.from('wios_tasks').insert(row);
       setShowNewTask(false); setNewTaskTitle(''); setNewTaskUrgent(false); setNewTaskDue('');
+      setNewTaskLater(false); setNewTaskLaterAt('');
       reload();
     }catch(e){ alert(e.message||'Could not add this task.'); }
     setBusy(false);
@@ -725,12 +760,20 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
   }
   async function delTask(t){
     if(!confirm('Delete this task?')) return;
-    await sb.from('wios_tasks').delete().eq('id',t.id);
-    reload();
+    hide(t.id);                       // remove from the list immediately
+    if(sel&&sel.id===t.id){ setSel(null); setMode('main'); }
+    try{
+      const {error}=await sb.from('wios_tasks').delete().eq('id',t.id);
+      if(error) throw error;
+    }catch(e){ alert('Could not delete: '+(e.message||e)); }
+    await reload();
   }
   async function patch(t, fields){
-    await sb.from('wios_tasks').update(fields).eq('id',t.id);
-    setSel(null); setMode('main'); reload();
+    try{
+      const {error}=await sb.from('wios_tasks').update(fields).eq('id',t.id);
+      if(error) throw error;
+    }catch(e){ alert('Could not update: '+(e.message||e)); }
+    setSel(null); setMode('main'); await reload();
   }
   const markDone   = t => patch(t,{status:'done', completed_at:nowIso(), reminded:false, urgent:false});
   const toWaiting  = (t,hours) => patch(t,{status:'waiting',
@@ -740,30 +783,31 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
     scheduled_at:new Date(schedAt).toISOString(), reminded:false});
 
   async function sendTask(t){
-    if(!sendTo || busy) return;
+    if(!sendTo.length || busy) return;
     setBusy(true);
     try{
+      // Turn my task into a coop I still hold; the people I picked become pending members.
       const {data:coop, error}=await sb.from('wios_coops').insert({
-        title:t.title, notes:t.notes, creator_id:me.id, holder_id:null,
-        pending_id:sendTo, last_holder_id:me.id, urgent:t.urgent
+        title:t.title, notes:t.notes, creator_id:me.id, holder_id:me.id,
+        pending_id:null, last_holder_id:me.id, urgent:t.urgent
       }).select().single();
       if(error) throw error;
-      await sb.from('wios_coop_members').insert([
-        {coop_id:coop.id, user_id:me.id, status:'accepted', joined_at:nowIso()},
-        {coop_id:coop.id, user_id:sendTo, status:'pending', invited_by:me.id, invite_message:sendMsg||null},
-      ]);
-      await sb.from('wios_coop_messages').insert({coop_id:coop.id, user_id:me.id, kind:'pass',
-        pass_to:sendTo, body:sendMsg||null});
+      const rows=[{coop_id:coop.id, user_id:me.id, status:'accepted', joined_at:nowIso()}];
+      sendTo.forEach(uid=>rows.push({coop_id:coop.id, user_id:uid, status:'pending', invited_by:me.id, invite_message:sendMsg||null}));
+      await sb.from('wios_coop_members').insert(rows);
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id, user_id:me.id, kind:'system',
+        body:`${cLabel(me.id)} brought in ${sendTo.map(cLabel).join(', ')}`});
+      hide(t.id);
       await sb.from('wios_tasks').delete().eq('id',t.id);
-      notifyUsers([sendTo], `Task request from ${me.role} ${first(me.name)}`, t.title, coop.id);
-      setSel(null); setMode('main'); setSendTo(null); setSendMsg('');
+      notifyUsers(sendTo, `${cLabel(me.id)} added you to a coop`, t.title, coop.id);
+      setSel(null); setMode('main'); setSendTo([]); setSendMsg('');
       reload();
     }catch(e){ alert(e.message||'Could not send this task.'); }
     setBusy(false);
   }
 
   function openSheet(t){
-    setSel(t); setMode('main'); setSendTo(null); setSendMsg('');
+    setSel(t); setMode('main'); setSendTo([]); setSendMsg('');
     setDNotes(t.notes||'');
     setDSubs(Array.isArray(t.subtasks)?t.subtasks:[]);
     setNewSub('');
@@ -795,16 +839,19 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
   async function acceptCoop(c){
     if(busy) return; setBusy(true);
     try{
+      // Accepting just means "I am in". The baton (holder) stays with whoever
+      // currently has it, so on the accepter's side it sits in Waiting until it
+      // is actually passed to them. Pending is cleared back to the last holder.
       await sb.from('wios_coop_members').update({status:'accepted',joined_at:nowIso()})
         .eq('coop_id',c.id).eq('user_id',me.id);
       if(c.pending_id===me.id)
-        await sb.from('wios_coops').update({holder_id:me.id,pending_id:null}).eq('id',c.id);
+        await sb.from('wios_coops').update({holder_id:c.last_holder_id||c.creator_id,pending_id:null}).eq('id',c.id);
       await sb.from('wios_coop_messages').insert({coop_id:c.id,user_id:me.id,kind:'system',
-        body:`${cLabel(me.id)} accepted`});
+        body:`${cLabel(me.id)} joined`});
       const others=[...new Set(members.filter(m=>m.coop_id===c.id&&m.status==='accepted')
         .map(m=>m.user_id).concat([c.creator_id]))].filter(x=>x!==me.id);
-      notifyUsers(others, `${cLabel(me.id)} accepted`, c.title, c.id);
-      await reload(); setOpenCoopId(c.id);
+      notifyUsers(others, `${cLabel(me.id)} joined`, c.title, c.id);
+      await reload();
     }catch(e){ alert(e.message||'Could not accept.'); }
     setBusy(false);
   }
@@ -964,11 +1011,6 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
           onClick={()=>!sortMode&&openSheet(t)}>
           <div className="row">
             {sortMode&&seg==='active'&&<span className="draghandle" aria-label="Drag">⠿</span>}
-            {!sortMode&&(seg==='active'||seg==='waiting'||seg==='scheduled')&&(
-              <button className="quickcheck" onClick={e=>{e.stopPropagation();markDone(t);}} aria-label="Mark done">
-                <span className="qc">{ICON.check}</span>
-              </button>
-            )}
             <div className="grow">
               <div className={'tt'+(t.status==='done'?' done':'')}>{t.title}</div>
               <div className="meta">
@@ -987,7 +1029,12 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
               </div>
             </div>
             {!sortMode&&(
-              <button className="trash" onClick={e=>{e.stopPropagation();delTask(t);}} aria-label="Delete">{ICON.trash}</button>
+              <div className="cardacts">
+                {t.status!=='done'&&(
+                  <button className="actbtn done" onClick={e=>{e.stopPropagation();markDone(t);}} aria-label="Mark done">{ICON.check}</button>
+                )}
+                <button className="actbtn del" onClick={e=>{e.stopPropagation();delTask(t);}} aria-label="Delete">{ICON.trash}</button>
+              </div>
             )}
           </div>
         </div>
@@ -1004,19 +1051,19 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
 
           {mode==='main'&&(
             <div>
-              {sendTo&&(
+              {sendTo.length>0&&(
                 <div className="handoffbar">
                   <Ic name="handoff" className="gold"/>
                   <div className="grow">
-                    <div style={{fontWeight:600,fontSize:14}}>Hand off to {(()=>{const p=people.find(x=>x.id===sendTo);return p?`${p.role} ${first(p.name)}`:'teammate';})()}</div>
+                    <div style={{fontWeight:600,fontSize:14}}>Coop with {sendTo.map(id=>{const p=people.find(x=>x.id===id);return p?first(p.name):'teammate';}).join(', ')}</div>
                     {sendMsg&&<div className="note" style={{marginTop:2}}>"{sendMsg}"</div>}
                   </div>
-                  <button className="xbtn" onClick={()=>{setSendTo(null);setSendMsg('');}} aria-label="Cancel handoff">×</button>
+                  <button className="xbtn" onClick={()=>{setSendTo([]);setSendMsg('');}} aria-label="Cancel">×</button>
                 </div>
               )}
-              {sendTo&&(
+              {sendTo.length>0&&(
                 <button className="btn btn-gold" style={{width:'100%',marginBottom:14}} disabled={busy} onClick={()=>sendTask(sel)}>
-                  {busy?'Sending...':'Send request'}
+                  {busy?'Creating...':'Create coop'}
                 </button>
               )}
               <div className="lbl">Subtasks {dSubs.length>0&&<span style={{color:'var(--gold)'}}>{dSubs.filter(s=>s.done).length}/{dSubs.length}</span>}</div>
@@ -1116,16 +1163,17 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
 
           {mode==='send'&&(
             <div>
-              <div className="lbl">Hand off to</div>
-              <PersonGrid people={people} value={sendTo} onChange={setSendTo} exclude={me.id}/>
+              <div className="lbl">Add teammates {sendTo.length>0&&<span style={{color:'var(--gold)'}}>{sendTo.length} selected</span>}</div>
+              <PersonGrid people={people} value={sendTo} exclude={me.id} multi
+                onChange={id=>setSendTo(a=>a.includes(id)?a.filter(x=>x!==id):[...a,id])}/>
               <textarea rows="2" placeholder="What do you need from them?" value={sendMsg}
                 onChange={e=>setSendMsg(e.target.value)}/>
               <div style={{height:12}}/>
-              <button className="btn btn-gold" style={{width:'100%'}} disabled={!sendTo} onClick={()=>setMode('main')}>
-                Add teammate
+              <button className="btn btn-gold" style={{width:'100%'}} disabled={!sendTo.length} onClick={()=>setMode('main')}>
+                Add {sendTo.length>1?`${sendTo.length} teammates`:'teammate'}
               </button>
               <div className="note" style={{marginTop:10}}>
-                Pick who takes it next. You will confirm and send from the task screen.
+                You keep the task first. Confirm on the next screen, then pass it when it is their turn.
               </div>
             </div>
           )}
@@ -1143,12 +1191,20 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
             <Ic name={newTaskUrgent?'starFill':'star'} className={newTaskUrgent?'gold':'muted'}/>
             <span className="grow">{newTaskUrgent?'Urgent, pinned to top':'Mark urgent'}</span>
           </button>
+          <button className={'opt'+(newTaskLater?' on':'')} style={{marginTop:8}} onClick={()=>setNewTaskLater(!newTaskLater)}>
+            <Ic name="calendar" className={newTaskLater?'gold':'muted'}/>
+            <span className="grow">{newTaskLater?'Set it for later':'Set it for later (hide until a date)'}</span>
+          </button>
+          {newTaskLater&&<>
+            <div className="lbl">Comes back to Active on</div>
+            <input type="datetime-local" value={newTaskLaterAt} onChange={e=>setNewTaskLaterAt(e.target.value)}/>
+          </>}
           <div className="lbl">Finish before (optional)</div>
           <input type="datetime-local" value={newTaskDue} onChange={e=>setNewTaskDue(e.target.value)}/>
           {newTaskDue&&<div className="note" style={{marginTop:6}}>A reminder is pushed 24 hours before this time.</div>}
           <div style={{height:12}}/>
           <button className="btn btn-gold" style={{width:'100%'}} disabled={!newTaskTitle.trim()||busy} onClick={createTask}>
-            {busy?'Adding...':'Add task'}
+            {busy?'Adding...':(newTaskLater?'Set for later':'Add task')}
           </button>
         </Sheet>
       )}
@@ -1178,25 +1234,27 @@ function TasksTab({me, people, tasks, coops, members, goals, reload, openCoopId,
 
 /* ── new coop sheet (shared by tasks view) ───────────────── */
 function NewCoopSheet({me, people, onClose, reload}){
-  const [nTitle,setNTitle]=useState(''); const [nTo,setNTo]=useState(null);
+  const [nTitle,setNTitle]=useState(''); const [nTo,setNTo]=useState([]);
   const [nMsg,setNMsg]=useState(''); const [nUrgent,setNUrgent]=useState(false);
   const [busy,setBusy]=useState(false);
   const label=id=>{ const p=people.find(x=>x.id===id); return p?`${p.role} ${first(p.name)}`:'someone'; };
+  const toggle=id=>setNTo(a=>a.includes(id)?a.filter(x=>x!==id):[...a,id]);
   async function createCoop(){
-    const title=nTitle.trim(); if(!title||!nTo||busy) return;
+    const title=nTitle.trim(); if(!title||!nTo.length||busy) return;
     setBusy(true);
     try{
+      // Creator keeps the baton: the coop opens in the creator's Active.
+      // Invited teammates are pending until they join; then it waits for a pass.
       const {data:coop,error}=await sb.from('wios_coops').insert({
-        title, creator_id:me.id, holder_id:null, pending_id:nTo, last_holder_id:me.id, urgent:nUrgent
+        title, creator_id:me.id, holder_id:me.id, pending_id:null, last_holder_id:me.id, urgent:nUrgent
       }).select().single();
       if(error) throw error;
-      await sb.from('wios_coop_members').insert([
-        {coop_id:coop.id,user_id:me.id,status:'accepted',joined_at:nowIso()},
-        {coop_id:coop.id,user_id:nTo,status:'pending',invited_by:me.id,invite_message:nMsg||null},
-      ]);
-      await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'pass',
-        pass_to:nTo,body:nMsg||null});
-      notifyUsers([nTo], `Task request from ${label(me.id)}`, title, coop.id);
+      const rows=[{coop_id:coop.id,user_id:me.id,status:'accepted',joined_at:nowIso()}];
+      nTo.forEach(uid=>rows.push({coop_id:coop.id,user_id:uid,status:'pending',invited_by:me.id,invite_message:nMsg||null}));
+      await sb.from('wios_coop_members').insert(rows);
+      await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'system',
+        body:`${label(me.id)} started this with ${nTo.map(label).join(', ')}`});
+      notifyUsers(nTo, `${label(me.id)} added you to a coop`, title, coop.id);
       onClose(); reload();
     }catch(e){ alert(e.message||'Could not create.'); }
     setBusy(false);
@@ -1204,18 +1262,18 @@ function NewCoopSheet({me, people, onClose, reload}){
   return (
     <Sheet onClose={onClose}>
       <h3>New coop task</h3>
-      <div className="sub">It starts as a request. Once they accept, you hand it back and forth until someone closes it.</div>
+      <div className="sub">A shared task. You keep it first, then pass it to a teammate when it is their turn. Add anyone who should be part of it.</div>
       <input placeholder="What needs doing?" value={nTitle} onChange={e=>setNTitle(e.target.value)}/>
-      <div className="lbl">Send to</div>
-      <PersonGrid people={people} value={nTo} onChange={setNTo} exclude={me.id}/>
+      <div className="lbl">Add teammates {nTo.length>0&&<span style={{color:'var(--gold)'}}>{nTo.length} selected</span>}</div>
+      <PersonGrid people={people} value={nTo} onChange={toggle} exclude={me.id} multi/>
       <textarea rows="2" placeholder="Message (optional)" value={nMsg} onChange={e=>setNMsg(e.target.value)}/>
-      <button className="opt" style={{marginTop:10}} onClick={()=>setNUrgent(!nUrgent)}>
+      <button className={'opt'+(nUrgent?' on':'')} style={{marginTop:10}} onClick={()=>setNUrgent(!nUrgent)}>
         <Ic name={nUrgent?'starFill':'star'} className="gold"/>
         <span className="grow">{nUrgent?'Urgent':'Mark urgent'}</span>
       </button>
       <div style={{height:6}}/>
-      <button className="btn btn-gold" style={{width:'100%'}} disabled={!nTitle.trim()||!nTo||busy} onClick={createCoop}>
-        {busy?'Sending...':'Send request'}
+      <button className="btn btn-gold" style={{width:'100%'}} disabled={!nTitle.trim()||!nTo.length||busy} onClick={createCoop}>
+        {busy?'Creating...':'Create coop'}
       </button>
     </Sheet>
   );
@@ -2080,7 +2138,7 @@ function MembersSheet({me, people, onClose, reload}){
 }
 
 /* ── settings ────────────────────────────────────────────── */
-function SettingsSheet({me, onClose, openMembers}){
+function SettingsSheet({me, onClose, openMembers, goTeam}){
   const [msg,setMsg]=useState(''); const [err,setErr]=useState('');
   const [subOn,setSubOn]=useState(false);
   const [pwMode,setPwMode]=useState(false);
@@ -2166,6 +2224,9 @@ function SettingsSheet({me, onClose, openMembers}){
 
       {me.is_admin&&<>
         <div className="lbl">Team</div>
+        <button className="opt" onClick={()=>{ onClose(); goTeam&&goTeam(); }}>
+          <Ic name="team" className="gold"/><span className="grow">Team Performance</span><span>›</span>
+        </button>
         <button className="opt" onClick={openMembers}>
           <Ic name="members" className="gold"/><span className="grow">Members</span><span>›</span>
         </button>
@@ -2350,8 +2411,54 @@ function App(){
   const [showMembers,setShowMembers]=useState(false);
   const [showNotifs,setShowNotifs]=useState(false);
   const [notifs,setNotifs]=useState([]);
+  const [pushPrompt,setPushPrompt]=useState(false);
   const [busy,setBusy]=useState(false);
   const ensured=useRef(false);
+
+  // First run only: offer to turn on notifications once, then never nag again.
+  useEffect(()=>{
+    try{
+      if(localStorage.getItem('wios-push-asked')) return;
+      const canPush = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if(canPush && standalone && Notification.permission==='default'){
+        const t=setTimeout(()=>setPushPrompt(true), 1200);
+        return ()=>clearTimeout(t);
+      }
+    }catch(e){}
+  },[]);
+  async function acceptPush(){
+    try{
+      localStorage.setItem('wios-push-asked','1');
+      const kr=await fetch('/.netlify/functions/notify'); const {publicKey}=await kr.json();
+      if(publicKey && Notification.permission!=='denied'){
+        const perm=await Notification.requestPermission();
+        if(perm==='granted'){
+          const reg=await navigator.serviceWorker.ready;
+          const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToU8(publicKey)});
+          const j=sub.toJSON();
+          await sb.from('wios_push_subs').upsert({user_id:me.id, endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth},{onConflict:'endpoint'});
+        }
+      }
+    }catch(e){}
+    setPushPrompt(false);
+  }
+  function dismissPush(){ try{localStorage.setItem('wios-push-asked','1');}catch(e){} setPushPrompt(false); }
+
+  // Track the on-screen keyboard height (iOS) so fixed bars sit on top of it.
+  useEffect(()=>{
+    const vv=window.visualViewport;
+    if(!vv) return;
+    const onResize=()=>{
+      const kb=Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb', kb+'px');
+      document.body.classList.toggle('kb-open', kb>80);
+    };
+    onResize();
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return ()=>{ vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize); };
+  },[]);
 
   // deep link from a push click: /?coop=<id> opens that coop
   useEffect(()=>{
@@ -2510,13 +2617,30 @@ function App(){
         ))}
       </div>
 
+      {pushPrompt&&(
+        <div className="overlay" onClick={dismissPush}>
+          <div className="sheet" onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
+            <div style={{color:'var(--gold)',display:'flex',justifyContent:'center',marginBottom:6}}>
+              <span className="ic bigbell">{ICON.bell}</span>
+            </div>
+            <h3 style={{textAlign:'center'}}>Turn on notifications</h3>
+            <div className="sub" style={{textAlign:'center'}}>
+              Get a push when a teammate passes you a task, a coop needs you, or something is due. You can change this anytime in settings.
+            </div>
+            <div style={{height:14}}/>
+            <button className="btn btn-gold" style={{width:'100%'}} onClick={acceptPush}>Turn on</button>
+            <button className="btn btn-ghost" style={{width:'100%',marginTop:8}} onClick={dismissPush}>Not now</button>
+          </div>
+        </div>
+      )}
       {showSettings&&<SettingsSheet me={me} onClose={()=>setShowSettings(false)}
-        openMembers={()=>{ setShowSettings(false); setShowMembers(true); }}/>}
+        openMembers={()=>{ setShowSettings(false); setShowMembers(true); }}
+        goTeam={()=>setTab('team')}/>}
       {showMembers&&<MembersSheet me={me} people={allPeople}
         onClose={()=>setShowMembers(false)} reload={load}/>}
       {showNotifs&&<NotifsSheet me={me} notifs={notifs} onClose={()=>setShowNotifs(false)}
         reload={load}
-        openCoop={cid=>{ setShowNotifs(false); setTab('coop'); setOpenCoopId(cid); }}/>}
+        openCoop={cid=>{ setShowNotifs(false); setTab('tasks'); setOpenCoopId(cid); }}/>}
     </div>
   );
 }
