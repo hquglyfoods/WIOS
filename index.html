@@ -105,8 +105,10 @@ body.kb-open .tabbar{transform:translateX(-50%) translateY(200%);pointer-events:
 .row{display:flex;align-items:center;gap:10px;}
 .grow{flex:1;min-width:0;}
 .tt{font-weight:600;font-size:15px;line-height:1.35;overflow-wrap:anywhere;}
+.card.task .tt{overflow-wrap:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tt.done{color:var(--muted);text-decoration:line-through;}
 .meta{font-size:12px;color:var(--muted);margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;line-height:1.4;}
+.card.task .meta{flex-wrap:nowrap;overflow:hidden;min-height:19px;}
 .chip{font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:6px;
   text-transform:uppercase;white-space:nowrap;}
 .chip.urgent{background:rgba(224,82,82,.16);color:var(--red);}
@@ -163,6 +165,12 @@ body.kb-open .tabbar{transform:translateX(-50%) translateY(200%);pointer-events:
 .opt .g{width:22px;text-align:center;flex:none;font-size:15px;}
 .opt .ic{width:22px;flex:none;color:var(--muted);}
 .opt.danger{color:var(--red);}
+.opt.actionsopen{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;}
+.actionsmenu{margin-bottom:8px;padding:6px;border-radius:0 0 11px 11px;background:rgba(0,0,0,.02);
+  box-shadow:inset 0 0 0 1px var(--border);border-top:none;animation:actionsIn .16s ease;}
+.actionsmenu .opt.sub{background:var(--panel);margin-bottom:6px;}
+.actionsmenu .opt.sub:last-child{margin-bottom:0;}
+@keyframes actionsIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
 .opt.danger .ic{color:var(--red);}
 .opt .grow{overflow-wrap:anywhere;}
 
@@ -656,6 +664,9 @@ const ICON = {
   members: <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.6"/><path d="M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/></svg>,
   key:   <svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M11.5 12H21M18 12v3M15 12v2.5"/></svg>,
   bell:  <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2.5h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>,
+  dots:  <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>,
+  chev:  <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>,
+  chevUp:<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>,
   gear:  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   back:  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>,
   undo:  <svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-1"/></svg>,
@@ -921,6 +932,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   const [newTaskRemindDate,setNewTaskRemindDate]=useState('');
   const [newTaskOtherDay,setNewTaskOtherDay]=useState(false);
   const [alarmEdit,setAlarmEdit]=useState('');   // datetime-local value when editing a task's alarm
+  const [actionsOpen,setActionsOpen]=useState(false);  // task detail: expandable "Actions" menu
   const [declining,setDeclining]=useState(null); const [declineMsg,setDeclineMsg]=useState('');
   // Optimistic removal: hide a task the instant it is deleted or marked done,
   // so the list updates even before the server round-trip / reload completes.
@@ -1173,7 +1185,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   }
 
   function openSheet(t){
-    setSel(t); setMode('main'); setSendTo([]); setSendMsg('');
+    setSel(t); setMode('main'); setSendTo([]); setSendMsg(''); setActionsOpen(false);
     setDNotes(t.notes||'');
     setDSubs(Array.isArray(t.subtasks)?t.subtasks:[]);
     setNewSub('');
@@ -1767,32 +1779,37 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
                 </button>
               )}
               {sel.status!=='done'&&(
-                <button className="opt" onClick={()=>patch(sel,{urgent:!sel.urgent})}>
-                  <Ic name={sel.urgent?'starFill':'star'} className="gold"/>
-                  <span className="grow">{sel.urgent?'Remove urgent':'Mark urgent, pin to top'}</span>
+                <button className={'opt'+(actionsOpen?' actionsopen':'')} onClick={()=>setActionsOpen(v=>!v)}>
+                  <Ic name="dots" className="muted"/><span className="grow">Actions</span>
+                  <Ic name={actionsOpen?'chevUp':'chev'} className="muted"/>
                 </button>
               )}
-              {sel.status!=='done'&&(
-                <button className="opt" onClick={()=>{
-                  // preload the picker with the current alarm, or a sensible default
-                  const base=sel.alarm_at?new Date(sel.alarm_at):new Date(Date.now()+3600000);
-                  setAlarmEdit(localDT(base)); setMode('alarm');
-                }}>
-                  <Ic name="bell" className="muted"/>
-                  <span className="grow">{sel.alarm_at&&!sel.alarm_fired?`Reminder ${fmtShort(sel.alarm_at)}`:'Set a reminder alarm'}</span>
-                </button>
+              {sel.status!=='done'&&actionsOpen&&(
+                <div className="actionsmenu">
+                  <button className="opt sub" onClick={()=>patch(sel,{urgent:!sel.urgent})}>
+                    <Ic name={sel.urgent?'starFill':'star'} className="gold"/>
+                    <span className="grow">{sel.urgent?'Remove urgent':'Mark urgent, pin to top'}</span>
+                  </button>
+                  <button className="opt sub" onClick={()=>{
+                    const base=sel.alarm_at?new Date(sel.alarm_at):new Date(Date.now()+3600000);
+                    setAlarmEdit(localDT(base)); setMode('alarm');
+                  }}>
+                    <Ic name="bell" className="muted"/>
+                    <span className="grow">{sel.alarm_at&&!sel.alarm_fired?`Reminder ${fmtShort(sel.alarm_at)}`:'Set a reminder alarm'}</span>
+                  </button>
+                  {!sel.is_system&&<>
+                    <button className="opt sub" onClick={()=>setMode('waiting')}>
+                      <Ic name="clock" className="muted"/><span className="grow">Waiting on someone, remind me later</span>
+                    </button>
+                    <button className="opt sub" onClick={()=>setMode('schedule')}>
+                      <Ic name="calendar" className="muted"/><span className="grow">Set it for later, hide until a date</span>
+                    </button>
+                    <button className="opt sub" onClick={()=>setMode('send')}>
+                      <Ic name="handoff" className="gold"/><span className="grow">Bring in a teammate, turn into a coop</span>
+                    </button>
+                  </>}
+                </div>
               )}
-              {sel.status!=='done'&&!sel.is_system&&<>
-                <button className="opt" onClick={()=>setMode('waiting')}>
-                  <Ic name="clock" className="muted"/><span className="grow">Waiting on someone, remind me later</span>
-                </button>
-                <button className="opt" onClick={()=>setMode('schedule')}>
-                  <Ic name="calendar" className="muted"/><span className="grow">Set it for later, hide until a date</span>
-                </button>
-                <button className="opt" onClick={()=>setMode('send')}>
-                  <Ic name="handoff" className="gold"/><span className="grow">Bring in a teammate, turn into a coop</span>
-                </button>
-              </>}
               <button className="opt danger"
                 onClick={async()=>{ if(!confirm('Delete this task?'))return;
                   await sb.from('wios_tasks').delete().eq('id',sel.id); setSel(null); reload(); }}>
