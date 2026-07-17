@@ -308,12 +308,12 @@ body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + env(safe-area-inset-bottom) +
 .card.task.dragging{opacity:.9;box-shadow:0 6px 20px rgba(0,0,0,.16);transform:scale(1.015);}
 .chip.wait{background:#E4E7EC;color:#6C737B;}
 .chip.later{background:#ECF1F7;color:#3A6EA5;}
-.swipearea{min-height:40vh;overflow-x:hidden;}
+.swipearea{min-height:40vh;overflow-x:hidden;touch-action:pan-y;}
 .slidewrap{will-change:transform,opacity;}
-.slidewrap.fromR{animation:slideFromR .22s cubic-bezier(.22,.61,.36,1);}
-.slidewrap.fromL{animation:slideFromL .22s cubic-bezier(.22,.61,.36,1);}
-@keyframes slideFromR{from{transform:translateX(22px);opacity:.35;}to{transform:translateX(0);opacity:1;}}
-@keyframes slideFromL{from{transform:translateX(-22px);opacity:.35;}to{transform:translateX(0);opacity:1;}}
+.slidewrap.fromR{animation:slideFromR .2s cubic-bezier(.22,.61,.36,1);}
+.slidewrap.fromL{animation:slideFromL .2s cubic-bezier(.22,.61,.36,1);}
+@keyframes slideFromR{from{transform:translateX(60px);opacity:.5;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideFromL{from{transform:translateX(-60px);opacity:.5;}to{transform:translateX(0);opacity:1;}}
 /* card action buttons: mark-done (green) + delete (red), always on the right */
 .cardacts{display:flex;align-items:center;gap:6px;flex:none;margin:-2px -4px -2px 6px;}
 .actbtn{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
@@ -525,12 +525,14 @@ body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + env(safe-area-inset-bottom) +
 .gbartrack i{display:block;height:100%;border-radius:6px;background:var(--gold);transition:width .3s;}
 .gbarval{flex:none;width:28px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
 .trendgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.trendcard{background:var(--panel2);border-radius:12px;padding:11px;}
-.trendname{font-size:12.5px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.spark{display:flex;align-items:flex-end;gap:4px;height:44px;}
-.sparkbar{flex:1;background:var(--gold);border-radius:3px 3px 0 0;min-height:6px;opacity:.85;}
-.sparkbar:last-child{background:var(--gold);opacity:1;}
-.trendfoot{font-size:11px;color:var(--muted);margin-top:6px;}
+.trendcard{background:var(--panel2);border-radius:12px;padding:11px;overflow:hidden;}
+.trendname{font-size:12.5px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;min-width:0;}
+.trendname>span:last-child,.trendname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tspark{display:flex;align-items:flex-end;gap:4px;height:40px;width:100%;}
+.tsparkbar{flex:1;background:var(--gold-line);border-radius:3px 3px 0 0;min-height:4px;opacity:.55;}
+.tsparkbar.hasval{background:var(--gold);opacity:.9;}
+.tsparkbar.last{opacity:1;}
+.trendfoot{font-size:11px;color:var(--muted);margin-top:7px;font-weight:600;}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
@@ -1445,9 +1447,18 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     {k:'scheduled',l:'Later', w:0.9},
     {k:'done',l:'Done', w:0.75},
   ];
-  // Swipe left/right on the list area to move between tabs. Ignores mostly-vertical
-  // drags (scrolling) and drags that begin on a task's drag handle.
-  const swipe=useRef({x:0,y:0,on:false});
+  // Finger-following swipe: while dragging horizontally the current panel moves under the
+  // finger (with edge resistance); on release it either springs back or slides the rest of
+  // the way out and switches tab, so it reads like scrolling across pages, not a hard cut.
+  const swipe=useRef({x:0,y:0,on:false,dragging:false,w:0});
+  const slideRef=useRef(null);
+  function segIndex(){ return segItems.findIndex(s=>s.k===seg); }
+  function setTX(px, anim){
+    const el=slideRef.current; if(!el) return;
+    el.style.transition = anim ? 'transform .2s cubic-bezier(.22,.61,.36,1), opacity .2s' : 'none';
+    el.style.transform = `translateX(${px}px)`;
+    el.style.opacity = String(Math.max(0.4, 1 - Math.abs(px)/ (swipe.current.w||360) ));
+  }
   function changeSeg(nextKey){
     if(nextKey===seg) return;
     const from=segItems.findIndex(s=>s.k===seg), to=segItems.findIndex(s=>s.k===nextKey);
@@ -1457,16 +1468,39 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   function onTouchStart(e){
     if(dragId) return;                              // a reorder drag is in progress
     if(e.target.closest && e.target.closest('.draghandle')) return;
-    const t=e.touches[0]; swipe.current={x:t.clientX,y:t.clientY,on:true};
+    const t=e.touches[0];
+    swipe.current={x:t.clientX,y:t.clientY,on:true,dragging:false,w:slideRef.current?slideRef.current.offsetWidth:360};
+  }
+  function onTouchMove(e){
+    const s=swipe.current; if(!s.on) return;
+    const t=e.touches[0];
+    const dx=t.clientX-s.x, dy=t.clientY-s.y;
+    if(!s.dragging){
+      if(Math.abs(dx)<8) return;                    // wait until intent is clear
+      if(Math.abs(dx)<Math.abs(dy)){ s.on=false; return; }   // vertical -> let it scroll
+      s.dragging=true;
+    }
+    const idx=segIndex();
+    // resistance at the ends (nothing to reveal past the first/last tab)
+    const atEnd = (dx<0 && idx===segItems.length-1) || (dx>0 && idx===0);
+    setTX(atEnd ? dx*0.28 : dx, false);
   }
   function onTouchEnd(e){
-    if(!swipe.current.on) return; swipe.current.on=false;
+    const s=swipe.current; if(!s.on){ return; } s.on=false;
+    if(!s.dragging){ return; }
     const t=e.changedTouches[0];
-    const dx=t.clientX-swipe.current.x, dy=t.clientY-swipe.current.y;
-    if(Math.abs(dx)<55 || Math.abs(dx)<Math.abs(dy)*1.5) return;   // not a clear horizontal swipe
-    const idx=segItems.findIndex(s=>s.k===seg);
-    const nextIdx = dx<0 ? Math.min(segItems.length-1, idx+1) : Math.max(0, idx-1);
-    if(nextIdx!==idx) changeSeg(segItems[nextIdx].k);
+    const dx=t.clientX-s.x;
+    const idx=segIndex();
+    const threshold=Math.min(90, s.w*0.28);
+    const goNext = dx<-threshold && idx<segItems.length-1;
+    const goPrev = dx>threshold && idx>0;
+    if(goNext||goPrev){
+      // slide the current panel the rest of the way out, then swap (new one animates in)
+      setTX(dx<0 ? -s.w : s.w, true);
+      setTimeout(()=>changeSeg(segItems[goNext?idx+1:idx-1].k), 150);
+    } else {
+      setTX(0, true);                               // spring back
+    }
   }
 
   return (
@@ -1503,8 +1537,8 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
 
       <Seg items={segItems} value={seg} onChange={v=>changeSeg(v)}/>
 
-      <div className="swipearea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <div key={seg} className={'slidewrap '+(slideDir>0?'fromR':slideDir<0?'fromL':'')}>
+      <div className="swipearea" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div key={seg} ref={slideRef} className={'slidewrap '+(slideDir>0?'fromR':slideDir<0?'fromL':'')}>
 
       {(seg==='active'||seg==='all')&&(coopGroups.req.length>0||reqGroups.incoming.length>0)&&(
         <>
@@ -2729,32 +2763,54 @@ function GoalsTab({me, goals, gps, reload, goalType, setGoalType, tasks}){
   const icon=s=>s==='completed'?'✓':s==='kept'?'→':'○';
   const iconColor=s=>s==='completed'?'var(--green)':s==='kept'?'var(--gold)':'var(--muted2)';
 
-  // swipe left/right to move between goal periods (same as the tasks tab)
+  // finger-following swipe between goal periods (same feel as the tasks tab)
   const gSegs=['overview',...PERIOD_TYPES];
   const [gDir,setGDir]=useState(0);
-  const gSwipe=useRef({x:0,y:0,on:false});
+  const gSwipe=useRef({x:0,y:0,on:false,dragging:false,w:0});
+  const gSlideRef=useRef(null);
+  function gSetTX(px, anim){
+    const el=gSlideRef.current; if(!el) return;
+    el.style.transition = anim ? 'transform .2s cubic-bezier(.22,.61,.36,1), opacity .2s' : 'none';
+    el.style.transform = `translateX(${px}px)`;
+    el.style.opacity = String(Math.max(0.4, 1 - Math.abs(px)/(gSwipe.current.w||360)));
+  }
   function gChange(next){
     if(next===goalType) return;
     setGDir(gSegs.indexOf(next)>gSegs.indexOf(goalType)?1:-1);
     setGoalType(next);
   }
-  function gTouchStart(e){ const t=e.touches[0]; gSwipe.current={x:t.clientX,y:t.clientY,on:true}; }
-  function gTouchEnd(e){
-    if(!gSwipe.current.on) return; gSwipe.current.on=false;
-    const t=e.changedTouches[0];
-    const dx=t.clientX-gSwipe.current.x, dy=t.clientY-gSwipe.current.y;
-    if(Math.abs(dx)<55 || Math.abs(dx)<Math.abs(dy)*1.5) return;
+  function gTouchStart(e){ const t=e.touches[0]; gSwipe.current={x:t.clientX,y:t.clientY,on:true,dragging:false,w:gSlideRef.current?gSlideRef.current.offsetWidth:360}; }
+  function gTouchMove(e){
+    const s=gSwipe.current; if(!s.on) return;
+    const t=e.touches[0]; const dx=t.clientX-s.x, dy=t.clientY-s.y;
+    if(!s.dragging){
+      if(Math.abs(dx)<8) return;
+      if(Math.abs(dx)<Math.abs(dy)){ s.on=false; return; }
+      s.dragging=true;
+    }
     const idx=gSegs.indexOf(goalType);
-    const ni = dx<0 ? Math.min(gSegs.length-1, idx+1) : Math.max(0, idx-1);
-    if(ni!==idx) gChange(gSegs[ni]);
+    const atEnd=(dx<0&&idx===gSegs.length-1)||(dx>0&&idx===0);
+    gSetTX(atEnd?dx*0.28:dx, false);
+  }
+  function gTouchEnd(e){
+    const s=gSwipe.current; if(!s.on) return; s.on=false;
+    if(!s.dragging) return;
+    const dx=e.changedTouches[0].clientX-s.x;
+    const idx=gSegs.indexOf(goalType);
+    const threshold=Math.min(90, s.w*0.28);
+    const goNext=dx<-threshold&&idx<gSegs.length-1, goPrev=dx>threshold&&idx>0;
+    if(goNext||goPrev){
+      gSetTX(dx<0?-s.w:s.w, true);
+      setTimeout(()=>gChange(gSegs[goNext?idx+1:idx-1]), 150);
+    } else { gSetTX(0, true); }
   }
 
   return (
     <div>
       <Seg items={[{k:'overview',l:'Overview'},...PERIOD_TYPES.map(t=>({k:t,l:PLABEL[t]}))]} value={goalType} onChange={gChange}/>
 
-      <div className="swipearea" onTouchStart={gTouchStart} onTouchEnd={gTouchEnd}>
-      <div key={goalType} className={'slidewrap '+(gDir>0?'fromR':gDir<0?'fromL':'')}>
+      <div className="swipearea" onTouchStart={gTouchStart} onTouchMove={gTouchMove} onTouchEnd={gTouchEnd}>
+      <div key={goalType} ref={gSlideRef} className={'slidewrap '+(gDir>0?'fromR':gDir<0?'fromL':'')}>
       {goalType==='overview'&&(
         <GoalOverview me={me} goals={goals} reload={reload} setGoalType={setGoalType}/>
       )}
@@ -3199,10 +3255,11 @@ function TeamTab({me, people, coops, members}){
               const mx=Math.max(1,...s.trend);
               return (
                 <div key={p.id} className="trendcard">
-                  <div className="trendname"><span className="chip role">{p.role}</span> {first(p.name)}</div>
-                  <div className="spark">
+                  <div className="trendname"><span className="chip role">{p.role}</span> <span className="grow">{first(p.name)}</span></div>
+                  <div className="tspark">
                     {s.trend.map((v,i)=>(
-                      <div key={i} className="sparkbar" style={{height:Math.max(6,Math.round(v/mx*100))+'%'}} title={v}/>
+                      <div key={i} className={'tsparkbar'+(v>0?' hasval':'')+(i===s.trend.length-1?' last':'')}
+                        style={{height:(v>0?Math.max(14,Math.round(v/mx*100)):8)+'%'}} title={v}/>
                     ))}
                   </div>
                   <div className="trendfoot">{s.trend.reduce((a,b)=>a+b,0)} in 4 wks</div>
@@ -3768,6 +3825,7 @@ function App(){
   const [roleProjects,setRoleProjects]=useState([]); const [roleMembers,setRoleMembers]=useState([]); const [roleItems,setRoleItems]=useState([]);
   const [goals,setGoals]=useState([]); const [gps,setGps]=useState([]); const [recs,setRecs]=useState([]);
   const [tab,setTab]=useState('tasks');
+  useEffect(()=>{ window.scrollTo(0,0); }, [tab]);
   const [goalType,setGoalType]=useState('overview');
   const [openCoopId,setOpenCoopId]=useState(null);
   const [showSettings,setShowSettings]=useState(false);
@@ -3992,7 +4050,10 @@ function App(){
 
       <div className="tabbar">
         {tabs.map(t=>(
-          <button key={t.k} className={tab===t.k?'on':''} onClick={()=>setTab(t.k)}>
+          <button key={t.k} className={tab===t.k?'on':''} onClick={()=>{
+            if(tab===t.k){ window.scrollTo({top:0,behavior:'smooth'}); }
+            else setTab(t.k);
+          }}>
             <span className="gwrap">
               {ICON[t.k]}
               {t.badge>0&&<span className="bdg">{t.badge>9?'9+':t.badge}</span>}
