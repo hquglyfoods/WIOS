@@ -42,6 +42,13 @@ input,select,textarea{background:var(--panel);border:1px solid var(--border2);bo
   padding:12px;width:100%;outline:none;min-height:var(--tap);font-size:16px;}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 textarea{resize:none;}
+/* date/time inputs have an intrinsic min width on iOS Safari that overflows the
+   sheet; force them to stay inside their container */
+input[type=datetime-local],input[type=date],input[type=time]{
+  width:100%;max-width:100%;min-width:0;-webkit-appearance:none;appearance:none;
+  display:block;}
+/* when form fields stack directly, keep a comfortable gap so they do not feel cramped */
+.sheet input + input, .sheet input + textarea, .sheet textarea + input, .sheet textarea + textarea{margin-top:10px;}
 button{cursor:pointer;border:none;background:none;padding:0;}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
@@ -66,7 +73,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:40;
   background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);
   display:flex;padding:7px 4px calc(env(safe-area-inset-bottom) + 7px);box-shadow:0 -1px 8px rgba(26,42,58,.06);}
-body.kb-open .tabbar{transform:translateX(-50%) translateY(200%);pointer-events:none;}   /* get fully out of the way of the keyboard */
+body.kb-open .tabbar{transform:translateX(-50%) translateY(200%);pointer-events:none;visibility:hidden;opacity:0;}   /* fully out of the way of the keyboard */
 .tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:6px 1px 4px;color:var(--muted2);font-size:10px;font-weight:600;letter-spacing:.01em;
   border-radius:12px;min-height:var(--tap);}
@@ -436,6 +443,11 @@ body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + env(safe-area-inset-bottom) +
 .bellmini{display:inline-flex;width:12px;height:12px;}
 .bellmini svg{width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none;}
 
+.wizadded{display:flex;align-items:center;gap:8px;background:var(--gold-soft);color:var(--text);
+  border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:14px;font-weight:500;}
+.wizcheck{display:inline-flex;width:16px;height:16px;color:var(--gold);flex:none;}
+.wizcheck svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -479,7 +491,7 @@ const ICON = {
   members: <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.6"/><path d="M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/></svg>,
   key:   <svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M11.5 12H21M18 12v3M15 12v2.5"/></svg>,
   bell:  <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2.5h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>,
-  gear:  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5l1.4 2.3 2.6-.6.5 2.6 2.4 1.1-1 2.5 1 2.5-2.4 1.1-.5 2.6-2.6-.6L12 21.5l-1.4-2.3-2.6.6-.5-2.6L5.1 16l1-2.5-1-2.5 2.4-1.1.5-2.6 2.6.6z"/></svg>,
+  gear:  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   back:  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>,
   undo:  <svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-1"/></svg>,
   note:  <svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>,
@@ -1406,7 +1418,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
         <Sheet onClose={()=>setShowNewTask(false)}>
           <h3>New task</h3>
           <div className="sub">Something for you to do. It goes in your Active list.</div>
-          <input autoFocus placeholder="What needs doing?" value={newTaskTitle}
+          <input placeholder="What needs doing?" value={newTaskTitle}
             onChange={e=>setNewTaskTitle(e.target.value)}
             onKeyDown={e=>{ if(e.key==='Enter'&&!newTaskDue) createTask(); }}/>
           <button className={'opt'+(newTaskUrgent?' on':'')} style={{marginTop:10}} onClick={()=>setNewTaskUrgent(!newTaskUrgent)}>
@@ -1563,7 +1575,7 @@ function NewRequestSheet({me, people, onClose, reload}){
     <Sheet onClose={onClose}>
       <h3>New request</h3>
       <div className="sub">Ask one or more people to do something. Each person accepts, does it, then marks it done. You get a push as each one finishes.</div>
-      <input autoFocus placeholder="What are you asking for?" value={title} onChange={e=>setTitle(e.target.value)}/>
+      <input placeholder="What are you asking for?" value={title} onChange={e=>setTitle(e.target.value)}/>
       <textarea rows="2" placeholder="Details (optional)" value={msg} onChange={e=>setMsg(e.target.value)}/>
       <div className="lbl">Ask who {to.length>0&&<span style={{color:'var(--gold)'}}>{to.length} selected</span>}</div>
       <PersonGrid people={people} value={to} onChange={toggle} exclude={me.id} multi/>
@@ -1846,13 +1858,16 @@ function CoopDetail({me, people, coop, members, onClose, reload}){
 
 /* ── goals ───────────────────────────────────────────────── */
 function GoalWizard({me, reload, startFrom='year', initialParentId=null, onDismiss}){
-  // Guided setup from a given period down to weekly, each step linked to the one above.
-  // Used on Jan 1 (year->week), each semester (semester->week) and each month (month->week).
+  // Guided setup from a given period down to weekly. Each step lets you add one or more
+  // goals for that period; the next period links under the first goal of this one (you can
+  // re-link any of them later in Overview). Used on Jan 1, each semester and each month.
   const ORDER=['year','semester','month','week'];
   const steps=ORDER.slice(ORDER.indexOf(startFrom));
   const [i,setI]=useState(0);
   const [text,setText]=useState('');
-  const [parentId,setParentId]=useState(initialParentId);
+  const [added,setAdded]=useState([]);          // goals added at the current step: [{id,title}]
+  const [parentId,setParentId]=useState(initialParentId);   // link target for this step's goals
+  const [firstChildParent,setFirstChildParent]=useState(null); // first goal id -> parent for next step
   const [prevTitle,setPrevTitle]=useState('');
   const [busy,setBusy]=useState(false);
   const t=steps[i];
@@ -1862,7 +1877,7 @@ function GoalWizard({me, reload, startFrom='year', initialParentId=null, onDismi
     month:prevTitle?`What will you do this month to reach "${prevTitle}"?`:'What is your goal for this month?',
     week:prevTitle?`What will you do this week to reach "${prevTitle}"?`:'What is your goal for this week?',
   };
-  async function next(){
+  async function addOne(){
     const title=text.trim(); if(!title||busy) return;
     setBusy(true);
     try{
@@ -1871,14 +1886,27 @@ function GoalWizard({me, reload, startFrom='year', initialParentId=null, onDismi
         title, status:'open', parent_id:parentId
       }).select().single();
       if(error) throw error;
-      if(i>=steps.length-1){ onDismiss&&onDismiss(); reload(); return; }
-      setParentId(data.id); setPrevTitle(title); setText(''); setI(i+1);
+      setAdded(a=>[...a,{id:data.id,title}]);
+      if(firstChildParent===null) setFirstChildParent(data.id);   // first goal of this step
+      setText('');
     }catch(e){ alert(e.message||'Could not save.'); }
     setBusy(false);
   }
+  async function next(){
+    // commit any text still in the box, then move on
+    if(text.trim()){ await addOne(); }
+    if(added.length===0 && !text.trim()){ return; }   // nothing added yet
+    if(i>=steps.length-1){ onDismiss&&onDismiss(); reload(); return; }
+    // the next period links under the first goal added here
+    setParentId(firstChildParent);
+    setPrevTitle(added[0]?added[0].title:text.trim());
+    setFirstChildParent(null); setAdded([]); setText(''); setI(i+1);
+  }
   async function skip(){
+    if(text.trim()) await addOne();
     if(busy) return; onDismiss&&onDismiss(); reload();
   }
+  const canAdvance = added.length>0 || text.trim().length>0;
   return (
     <div className="wiz">
       <div className="wizdots">
@@ -1888,16 +1916,22 @@ function GoalWizard({me, reload, startFrom='year', initialParentId=null, onDismi
       </div>
       <div className="wizstep">{PLABEL[t]} goal</div>
       <div className="wizq">{prompt[t]}</div>
-      <textarea autoFocus rows="3" placeholder="Type your goal" value={text}
+      {added.map(g=>(
+        <div key={g.id} className="wizadded"><span className="wizcheck">{ICON.check}</span>{g.title}</div>
+      ))}
+      <textarea rows="2" placeholder={added.length?'Add another (optional)':'Type your goal'} value={text}
         onChange={e=>setText(e.target.value)}/>
-      <button className="btn btn-gold" style={{width:'100%',marginTop:6}} disabled={!text.trim()||busy} onClick={next}>
+      <button className="btn btn-line btn-sm" style={{width:'100%',marginTop:6}} disabled={!text.trim()||busy} onClick={addOne}>
+        + Add {added.length?'another':'this goal'}
+      </button>
+      <button className="btn btn-gold" style={{width:'100%',marginTop:8}} disabled={!canAdvance||busy} onClick={next}>
         {i>=steps.length-1?(busy?'Saving...':'Finish'):'Next'}
       </button>
       <button className="btn btn-ghost btn-sm" style={{width:'100%',marginTop:8}} onClick={skip}>
         {i>0?'Stop here for now':'Not now'}
       </button>
       <div className="note" style={{textAlign:'center',marginTop:12}}>
-        You can edit or add more any time.
+        You can edit, add, or re-link any goal later.
       </div>
     </div>
   );
@@ -1939,25 +1973,24 @@ function GoalOverview({me, goals, reload, setGoalType}){
   // Broadest current period that has no goal set drives it: no year goal -> full
   // year->week on Jan 1; no semester goal -> semester->week each half; no month goal
   // -> month->week each month. Weekly-only gaps are not forced (add those inline).
-  // A per-period dismissal is remembered so it does not nag after "Not now".
+  const [dismissedKeys,setDismissedKeys]=useState(()=>new Set());
   const wizard=useMemo(()=>{
-    const dismissed=(k)=>{ try{ return localStorage.getItem('wios-wiz-'+k)==='1'; }catch(e){ return false; } };
     for(const t of ['year','semester','month']){
-      if((cur[t]||[]).length===0 && !dismissed(t+':'+curKey[t])){
-        // link the wizard's top step under the existing parent, if there's exactly one
+      const dkey=t+':'+curKey[t];
+      if((cur[t]||[]).length===0 && !dismissedKeys.has(dkey)){
         const pt=parentType[t];
         const parent = pt && (cur[pt]||[]).length===1 ? cur[pt][0].id : null;
-        return {startFrom:t, parentId:parent, dismissKey:t+':'+curKey[t]};
+        return {startFrom:t, parentId:parent, dismissKey:dkey};
       }
     }
     return null;
-  },[cur,curKey]);
-  const [wizClosed,setWizClosed]=useState(false);
+  },[cur,curKey,dismissedKeys]);
   function dismissWizard(){
-    if(wizard){ try{ localStorage.setItem('wios-wiz-'+wizard.dismissKey,'1'); }catch(e){} }
-    setWizClosed(true);
+    // only used when the user taps "Not now" / "Stop here". Session-only: if they later
+    // delete the goal that filled a period, the wizard offers that period again.
+    if(wizard) setDismissedKeys(s=>{ const n=new Set(s); n.add(wizard.dismissKey); return n; });
   }
-  const showWizard = wizard && !wizClosed;
+  const showWizard = wizard!==null;
 
   function GoalLine({g, depth}){
     const kids=childrenOf(g.id);
@@ -3094,22 +3127,22 @@ function App(){
   // Track the on-screen keyboard height (iOS) so fixed bars sit on top of it.
   useEffect(()=>{
     const vv=window.visualViewport;
-    const setKb=(kb)=>{
-      document.documentElement.style.setProperty('--kb', kb+'px');
-      document.body.classList.toggle('kb-open', kb>80);
-    };
+    const isField=el=>el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
+    const fieldFocused=()=>isField(document.activeElement);
     const onResize=()=>{
       if(!vv) return;
       const kb=Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKb(kb);
+      document.documentElement.style.setProperty('--kb', kb+'px');
+      // Only let the measured height REMOVE kb-open when no field is focused. While a
+      // field has focus we keep the bars hidden even if the measurement lags or reads 0,
+      // so the tab bar never floats up onto the keyboard.
+      if(kb>80) document.body.classList.add('kb-open');
+      else if(!fieldFocused()) document.body.classList.remove('kb-open');
     };
-    // Focus/blur is a reliable signal that the keyboard is up, even when the
-    // visualViewport math is flaky inside an installed PWA. If we know an input is
-    // focused but have no measured height yet, assume a typical keyboard so the tab
-    // bar still gets out of the way.
-    const isField=el=>el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
+    // Focus is the reliable signal that the keyboard is up (works even when the
+    // visualViewport math is flaky inside an installed PWA).
     const onFocus=e=>{ if(isField(e.target)){ document.body.classList.add('kb-open'); if(vv) onResize(); } };
-    const onBlur=()=>{ setTimeout(()=>{ if(!isField(document.activeElement)){ document.body.classList.remove('kb-open'); document.documentElement.style.setProperty('--kb','0px'); } },50); };
+    const onBlur=()=>{ setTimeout(()=>{ if(!fieldFocused()){ document.body.classList.remove('kb-open'); document.documentElement.style.setProperty('--kb','0px'); } },60); };
     if(vv){ onResize(); vv.addEventListener('resize', onResize); vv.addEventListener('scroll', onResize); }
     document.addEventListener('focusin', onFocus);
     document.addEventListener('focusout', onBlur);
