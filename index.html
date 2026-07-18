@@ -619,6 +619,47 @@ body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + env(safe-area-inset-bottom) +
 .trendfoot{font-size:11px;color:var(--muted);margin-top:7px;font-weight:600;}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
+
+/* ── First-run interactive tour ─────────────────────────── */
+body.tour-open{overflow:hidden;}
+.tour-catch{position:fixed;inset:0;z-index:80;}
+.tour-dim{position:fixed;inset:0;z-index:81;background:rgba(20,26,34,.58);pointer-events:none;}
+.tour-hole{position:fixed;z-index:81;pointer-events:none;
+  box-shadow:0 0 0 200vmax rgba(20,26,34,.58);
+  transition:top .32s cubic-bezier(.22,.61,.36,1),left .32s cubic-bezier(.22,.61,.36,1),
+    width .32s cubic-bezier(.22,.61,.36,1),height .32s cubic-bezier(.22,.61,.36,1),border-radius .32s;}
+.tour-ring{position:fixed;z-index:82;pointer-events:none;border:2px solid var(--gold);border-radius:12px;
+  animation:tourpulse 1.7s ease-in-out infinite;
+  transition:top .32s,left .32s,width .32s,height .32s;}
+@keyframes tourpulse{0%,100%{box-shadow:0 0 0 0 rgba(58,110,165,.5);}55%{box-shadow:0 0 0 9px rgba(58,110,165,0);}}
+.tour-card{position:fixed;z-index:83;left:16px;right:16px;max-width:420px;margin:0 auto;
+  background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px 16px 14px;
+  box-shadow:0 18px 50px rgba(20,26,34,.35);}
+.tour-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.tour-count{font-size:11px;color:var(--muted2);font-weight:600;letter-spacing:.04em;}
+.tour-skip{background:none;border:none;color:var(--muted2);font-size:12px;font-weight:600;padding:4px 2px;}
+.tour-kicker{display:flex;align-items:center;gap:8px;color:var(--gold);font-weight:700;font-size:15.5px;margin-bottom:6px;}
+.tour-kicker .ic{display:inline-flex;}
+.tour-kicker .ic svg{width:19px;height:19px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.tour-body{font-size:13.5px;line-height:1.6;color:var(--text);}
+.tour-when{margin-top:9px;font-size:12.5px;line-height:1.55;color:var(--muted);
+  background:var(--gold-soft);border-radius:10px;padding:8px 10px;}
+.tour-when b{color:var(--gold);font-weight:700;}
+.tour-bar{height:3px;background:var(--panel2);border-radius:2px;margin-top:14px;overflow:hidden;}
+.tour-bar>div{height:100%;background:var(--gold);border-radius:2px;transition:width .3s;}
+.tour-art{margin:2px 0 10px;display:flex;justify-content:center;background:var(--panel2);
+  border:1px solid var(--border);border-radius:12px;padding:8px 4px 4px;}
+.tour-art svg{display:block;max-width:100%;}
+.tour-art g,.tour-art rect,.tour-art circle{transform-box:fill-box;}
+.ta-baton{animation:taBaton 4.5s ease-in-out infinite;}
+@keyframes taBaton{0%,14%{transform:translateX(0);}32%,48%{transform:translateX(96px);}
+  66%,84%{transform:translateX(192px);}98%,100%{transform:translateX(0);}}
+.ta-pop{opacity:0;transform:scale(.4);transform-origin:center;animation:taPop 3.6s ease-in-out infinite;}
+@keyframes taPop{0%,8%{opacity:0;transform:scale(.4);}16%,86%{opacity:1;transform:scale(1);}94%,100%{opacity:0;transform:scale(.4);}}
+.ta-fill{width:0;animation:taFill 3.4s ease-in-out infinite;}
+@keyframes taFill{0%,10%{width:0;}55%,92%{width:48px;}100%{width:0;}}
+.ta-pulse{animation:taPulse 1.8s ease-in-out infinite;}
+@keyframes taPulse{0%,100%{opacity:.35;}50%{opacity:1;}}
 </style>
 </head>
 <body>
@@ -1618,21 +1659,21 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
       )}
 
       <div className="addrow addrow4">
-        <button className="btn addbtn ab-task" onClick={()=>{ setNewTaskTitle(''); setShowNewTask(true); }}>
+        <button data-tour="add-task" className="btn addbtn ab-task" onClick={()=>{ setNewTaskTitle(''); setShowNewTask(true); }}>
           {ICON.tasks}<span>Task</span>
         </button>
-        <button className="btn addbtn ab-coop" onClick={()=>{ setSendTo([]); setSendMsg(''); setShowNewCoop(true); }}>
+        <button data-tour="add-coop" className="btn addbtn ab-coop" onClick={()=>{ setSendTo([]); setSendMsg(''); setShowNewCoop(true); }}>
           {ICON.coop}<span>Coop</span>
         </button>
-        <button className="btn addbtn ab-role" onClick={()=>setShowNewRole(true)}>
+        <button data-tour="add-role" className="btn addbtn ab-role" onClick={()=>setShowNewRole(true)}>
           {ICON.roles}<span>Role</span>
         </button>
-        <button className="btn addbtn ab-request" onClick={()=>setShowNewRequest(true)}>
+        <button data-tour="add-request" className="btn addbtn ab-request" onClick={()=>setShowNewRequest(true)}>
           {ICON.request}<span>Request</span>
         </button>
       </div>
 
-      <Seg items={segItems} value={seg} onChange={v=>changeSeg(v)}/>
+      <div data-tour="seg"><Seg items={segItems} value={seg} onChange={v=>changeSeg(v)}/></div>
 
       <div className="swipearea" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div key={seg} ref={slideRef} className={'slidewrap '+(slideDir>0?'fromR':slideDir<0?'fromL':'')}>
@@ -3711,7 +3752,7 @@ function MembersSheet({me, people, onClose, reload}){
 }
 
 /* ── settings ────────────────────────────────────────────── */
-function SettingsSheet({me, onClose, openMembers, goTeam, openGuide}){
+function SettingsSheet({me, onClose, openMembers, goTeam, openGuide, openTour}){
   const [msg,setMsg]=useState(''); const [err,setErr]=useState('');
   const [subOn,setSubOn]=useState(false);
   const [pwMode,setPwMode]=useState(false);
@@ -3806,6 +3847,9 @@ function SettingsSheet({me, onClose, openMembers, goTeam, openGuide}){
       </>}
 
       <div className="lbl">Account</div>
+      <button className="opt" onClick={()=>{ onClose(); openTour&&openTour(); }}>
+        <Ic name="ask" className="gold"/><span className="grow">Take the tour</span><span>›</span>
+      </button>
       <button className="opt" onClick={()=>{ onClose(); openGuide&&openGuide(); }}>
         <Ic name="coach" className="gold"/><span className="grow">How WIOS works</span><span>›</span>
       </button>
@@ -3845,7 +3889,7 @@ function SettingsSheet({me, onClose, openMembers, goTeam, openGuide}){
 
 /* First-run guide: explains the four ways to give work, since Task, Coop, Role, and Request
    are easy to confuse at first. */
-function GuideSheet({onClose}){
+function GuideSheet({onClose, tourNext}){
   const slides=[
     {kind:'welcome', img:GUIDE_IMG.welcome, title:'Welcome to WIOS',
       desc:'Work In One Space. A quick tour of the ways your team moves work together.'},
@@ -3888,7 +3932,7 @@ function GuideSheet({onClose}){
       </div>
       <div className="row" style={{gap:8,marginTop:8}}>
         {i>0&&<button className="btn btn-ghost btn-sm" style={{flex:'none',padding:'0 16px'}} onClick={()=>setI(i-1)}>Back</button>}
-        <button className="btn btn-gold" style={{flex:1}} onClick={()=>last?onClose():setI(i+1)}>{last?'Start':'Next'}</button>
+        <button className="btn btn-gold" style={{flex:1}} onClick={()=>last?onClose():setI(i+1)}>{last?(tourNext?'Start the tour':'Start'):'Next'}</button>
       </div>
     </Sheet>
   );
@@ -4358,6 +4402,203 @@ function Splash(){
 }
 
 /* ── app shell ───────────────────────────────────────────── */
+/* Interactive first-run tour. Walks through the real UI: each step spotlights an
+   actual element (cutout in a dark overlay) or a whole screen (with a pulsing ring
+   on its tab button), and a card explains what it is, how to use it, and when to
+   reach for it. Steps can switch tabs via goTab. Blocks all interaction underneath
+   until the tour ends or is skipped. Re-runnable from Settings. */
+/* Little how-it-works pictures for the tour. Pure inline SVG with light CSS
+   animation, so first-time users can SEE how coop, role, request, waiting,
+   and later behave instead of only reading about them. */
+function TourArt({kind}){
+  const Person=({x,y,c})=>(
+    <g>
+      <circle cx={x} cy={y-6} r={6.5} fill={c}/>
+      <path d={'M '+(x-10)+' '+(y+10)+' a 10 7.5 0 0 1 20 0 Z'} fill={c}/>
+    </g>
+  );
+  const Arrow=({x1,x2,y})=>(
+    <g stroke="var(--muted2)" strokeWidth="2" strokeLinecap="round" fill="none">
+      <path d={'M '+x1+' '+y+' L '+x2+' '+y}/>
+      <path d={'M '+(x2-6)+' '+(y-4)+' L '+x2+' '+y+' L '+(x2-6)+' '+(y+4)}/>
+    </g>
+  );
+  const Check=({x,y,delay})=>(
+    <g className="ta-pop" style={{animationDelay:delay}}>
+      <circle cx={x} cy={y} r={8} fill="var(--green)"/>
+      <path d={'M '+(x-3.5)+' '+y+' l 2.5 3 l 5 -6'} stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    </g>
+  );
+  const Label=({x,y,children,c,w})=>(
+    <text x={x} y={y} textAnchor="middle" fontSize="9.5" fontWeight={w||600} fill={c||'var(--muted)'} fontFamily="inherit">{children}</text>
+  );
+  if(kind==='coop')return(
+    <svg width="300" height="86" viewBox="0 0 300 86">
+      <Arrow x1={72} x2={116} y={34}/><Arrow x1={172} x2={216} y={34}/>
+      <Label x={94} y={26}>pass</Label><Label x={194} y={26}>pass</Label>
+      <Person x={48} y={38} c="var(--blue)"/><Person x={144} y={38} c="var(--blue)"/><Person x={240} y={38} c="var(--blue)"/>
+      <Label x={48} y={66}>first</Label><Label x={144} y={66}>next</Label><Label x={240} y={66}>last</Label>
+      <g className="ta-baton"><circle cx={48} cy={14} r={6} fill="var(--gold)"/></g>
+      <Label x={150} y={82} c="var(--muted2)">the baton moves, one person at a time</Label>
+    </svg>
+  );
+  if(kind==='role')return(
+    <svg width="300" height="86" viewBox="0 0 300 86">
+      <rect x={108} y={2} width={84} height={18} rx={6} fill="var(--gold)" opacity="0.9"/>
+      <Label x={150} y={14.5} c="#fff" w={700}>PROJECT</Label>
+      <g stroke="var(--border2)" strokeWidth="1.5"><path d="M 150 20 L 150 26 M 150 26 L 56 26 L 56 32 M 150 26 L 244 26 L 244 32 M 150 26 L 150 32" fill="none"/></g>
+      <Person x={56} y={46} c="var(--blue)"/><Person x={150} y={46} c="var(--purple)"/><Person x={244} y={46} c="var(--teal)"/>
+      <rect x={32} y={62} width={48} height={6} rx={3} fill="var(--border)"/>
+      <rect x={126} y={62} width={48} height={6} rx={3} fill="var(--border)"/>
+      <rect x={220} y={62} width={48} height={6} rx={3} fill="var(--border)"/>
+      <rect className="ta-fill" x={32} y={62} height={6} rx={3} fill="var(--green)"/>
+      <rect className="ta-fill" style={{animationDelay:'.5s'}} x={126} y={62} height={6} rx={3} fill="var(--green)"/>
+      <rect className="ta-fill" style={{animationDelay:'1s'}} x={220} y={62} height={6} rx={3} fill="var(--green)"/>
+      <Label x={150} y={82} c="var(--muted2)">everyone works at the same time, each on their part</Label>
+    </svg>
+  );
+  if(kind==='request')return(
+    <svg width="300" height="86" viewBox="0 0 300 86">
+      <Person x={44} y={42} c="var(--purple)"/>
+      <Label x={44} y={68}>you</Label>
+      <g stroke="var(--muted2)" strokeWidth="2" strokeLinecap="round" fill="none">
+        <path d="M 66 32 L 198 16 M 192 12.5 L 198 16 L 193 19.5"/>
+        <path d="M 66 38 L 198 38 M 192 34 L 198 38 L 192 42"/>
+        <path d="M 66 44 L 198 60 M 193 56.5 L 198 60 L 192 63.5"/>
+      </g>
+      <Person x={222} y={18} c="var(--blue)"/><Person x={222} y={44} c="var(--blue)"/><Person x={222} y={70} c="var(--blue)"/>
+      <Check x={248} y={12} delay=".2s"/><Check x={248} y={38} delay=".8s"/><Check x={248} y={64} delay="1.4s"/>
+      <Label x={150} y={82} c="var(--muted2)">one ask, each person does it and checks it off</Label>
+    </svg>
+  );
+  if(kind==='waiting')return(
+    <svg width="300" height="86" viewBox="0 0 300 86">
+      <rect x={8} y={22} width={78} height={32} rx={8} fill="var(--panel)" stroke="var(--border2)"/>
+      <rect x={16} y={31} width={52} height={5} rx={2.5} fill="var(--border2)"/>
+      <rect x={16} y={41} width={34} height={5} rx={2.5} fill="var(--border)"/>
+      <Arrow x1={92} x2={126} y={38}/>
+      <circle cx={150} cy={38} r={16} fill="none" stroke="var(--muted2)" strokeWidth="2"/>
+      <path d="M 150 29 L 150 38 L 157 42" stroke="var(--muted2)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <Label x={150} y={66}>it waits</Label>
+      <Arrow x1={174} x2={208} y={38}/>
+      <g className="ta-pulse">
+        <path d="M 232 44 a 10 10 0 0 1 20 0 l 2 4 l -24 0 Z" fill="var(--gold)"/>
+        <circle cx={242} cy={51} r={2.5} fill="var(--gold)"/>
+      </g>
+      <Label x={242} y={66}>comes back</Label>
+      <Label x={47} y={66}>your task</Label>
+      <Label x={150} y={82} c="var(--muted2)">off your list now, back with a reminder on your day</Label>
+    </svg>
+  );
+  if(kind==='later')return(
+    <svg width="300" height="86" viewBox="0 0 300 86">
+      <rect x={40} y={8} width={62} height={56} rx={8} fill="var(--panel)" stroke="var(--border2)"/>
+      <rect x={40} y={8} width={62} height={14} rx={8} fill="var(--border2)"/>
+      <rect x={40} y={16} width={62} height={6} fill="var(--border2)"/>
+      {[0,1,2].map(r=>[0,1,2,3].map(c=>{
+        const on=(r===1&&c===2);
+        return <circle key={r+'-'+c} cx={52+c*13} cy={32+r*11} r={on?5:2.5}
+          fill={on?'var(--gold)':'var(--border2)'} className={on?'ta-pulse':undefined}/>;
+      }))}
+      <Label x={71} y={78}>pick a day</Label>
+      <Arrow x1={116} x2={152} y={36}/>
+      <g className="ta-pop" style={{animationDelay:'.6s'}}>
+        <rect x={166} y={20} width={92} height={32} rx={8} fill="var(--panel)" stroke="var(--gold)" strokeWidth="1.5"/>
+        <rect x={175} y={29} width={60} height={5} rx={2.5} fill="var(--border2)"/>
+        <rect x={175} y={39} width={40} height={5} rx={2.5} fill="var(--border)"/>
+      </g>
+      <Label x={212} y={78}>pops back that day</Label>
+    </svg>
+  );
+  return null;
+}
+
+function TourOverlay({steps, goTab, onDone}){
+  const [i,setI]=useState(0);
+  const [hole,setHole]=useState(null);
+  const [ring,setRing]=useState(null);
+  const [cardStyle,setCardStyle]=useState(null);
+  const [measured,setMeasured]=useState(-1);
+  const s=steps[i];
+  useEffect(()=>{
+    document.body.classList.add('tour-open');
+    return ()=>document.body.classList.remove('tour-open');
+  },[]);
+  useEffect(()=>{
+    let dead=false, tries=0;
+    window.scrollTo(0,0);
+    if(s.tab) goTab(s.tab);
+    function measure(){
+      if(dead) return;
+      tries++;
+      let h=null, rg=null;
+      if(s.target==='main'){
+        // whole screen between header and tab bar
+        const hd=document.querySelector('.hdr'); const tb=document.querySelector('.tabbar');
+        const sh=document.querySelector('#shell');
+        const top=hd?hd.getBoundingClientRect().bottom+4:64;
+        const bot=tb?tb.getBoundingClientRect().top-4:window.innerHeight-72;
+        const sr=sh?sh.getBoundingClientRect():{left:0,width:window.innerWidth};
+        h={top, left:sr.left+6, w:sr.width-12, h:bot-top, rad:18};
+      }else if(s.target){
+        const el=document.querySelector('[data-tour="'+s.target+'"]');
+        if(!el){ if(tries<24){ setTimeout(measure,60); return; } }
+        else{
+          const r=el.getBoundingClientRect();
+          h={top:r.top-6, left:Math.max(4,r.left-6), w:r.width+12, h:r.height+12, rad:14};
+        }
+      }
+      if(s.ring){
+        const el=document.querySelector('[data-tour="'+s.ring+'"]');
+        if(el){ const r=el.getBoundingClientRect(); rg={top:r.top-2,left:r.left-2,w:r.width+4,h:r.height+4}; }
+      }
+      // card placement
+      let cs;
+      if(!s.target){
+        cs={top:'50%', transform:'translateY(-50%)'};
+      }else if(s.cardPos==='bottom'&&h){
+        cs={bottom:(window.innerHeight-(h.top+h.h))+14};
+      }else if(h){
+        const mid=h.top+h.h/2;
+        if(mid<window.innerHeight*0.45) cs={top:h.top+h.h+14};
+        else cs={bottom:(window.innerHeight-h.top)+14};
+      }else{
+        cs={top:'50%', transform:'translateY(-50%)'};
+      }
+      setHole(h); setRing(rg); setCardStyle(cs); setMeasured(i);
+    }
+    setTimeout(measure,90);
+    return ()=>{ dead=true; };
+  },[i]);
+  const last=i===steps.length-1;
+  return(
+    <>
+      <div className="tour-catch" onTouchMove={e=>e.preventDefault()} onClick={e=>e.stopPropagation()}/>
+      {hole
+        ?<div className="tour-hole" style={{top:hole.top,left:hole.left,width:hole.w,height:hole.h,borderRadius:hole.rad}}/>
+        :<div className="tour-dim"/>}
+      {ring&&<div className="tour-ring" style={{top:ring.top,left:ring.left,width:ring.w,height:ring.h}}/>}
+      {measured===i&&(
+        <div className="tour-card" style={cardStyle}>
+          <div className="tour-top">
+            <span className="tour-count">{(i+1)+' / '+steps.length}</span>
+            <button type="button" className="tour-skip" onClick={onDone}>Skip tour</button>
+          </div>
+          <div className="tour-kicker">{s.icon&&<Ic name={s.icon}/>}<span>{s.title}</span></div>
+          {s.art&&<div className="tour-art"><TourArt kind={s.art}/></div>}
+          <div className="tour-body">{s.body}</div>
+          {s.when&&<div className="tour-when"><b>When to use it:</b> {s.when}</div>}
+          <div className="row" style={{gap:8,marginTop:14}}>
+            {i>0&&<button type="button" className="btn btn-ghost btn-sm" style={{flex:'none',padding:'0 16px'}} onClick={()=>setI(i-1)}>Back</button>}
+            <button type="button" className="btn btn-gold btn-sm" style={{flex:1}} onClick={()=>{ last?onDone():setI(i+1); }}>{last?(s.cta||'Done'):'Next'}</button>
+          </div>
+          <div className="tour-bar"><div style={{width:(((i+1)/steps.length)*100)+'%'}}/></div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function App(){
   const [session,setSession]=useState(undefined);
   const [me,setMe]=useState(null);
@@ -4383,11 +4624,78 @@ function App(){
   const [busy,setBusy]=useState(false);
   const ensured=useRef(false);
 
-  // First run only: show the quick "how it works" guide once.
+  const [showTour,setShowTour]=useState(false);
+  const [guideThenTour,setGuideThenTour]=useState(false);
+
+  // First run only: show the concept slides once, then flow into the interactive tour.
   useEffect(()=>{
-    try{ if(!localStorage.getItem('wios-guide-seen')) setShowGuide(true); }catch(e){}
+    try{
+      if(!localStorage.getItem('wios-guide-seen')){ setGuideThenTour(true); setShowGuide(true); }
+    }catch(e){}
   },[]);
-  function closeGuide(){ try{localStorage.setItem('wios-guide-seen','1');}catch(e){} setShowGuide(false); }
+  function closeGuide(){
+    try{localStorage.setItem('wios-guide-seen','1');}catch(e){}
+    setShowGuide(false);
+    let tourSeen=false; try{ tourSeen=!!localStorage.getItem('wios-tour-seen'); }catch(e){}
+    if(guideThenTour&&!tourSeen){ setGuideThenTour(false); setShowTour(true); }
+  }
+  function endTour(){
+    try{localStorage.setItem('wios-tour-seen','1');}catch(e){}
+    setShowTour(false); setTab('tasks'); window.scrollTo(0,0);
+  }
+
+  // Tour steps: each explains one tool (what, how, when). Tab-screen steps switch
+  // the app to that tab so the person sees the real screen while reading.
+  const tourSteps=useMemo(()=>{
+    if(!me) return [];
+    const s=[
+      {tab:'tasks', title:'Welcome to WIOS',
+       body:'Hi! WIOS is your team\'s one home for work. Everything you and the team are doing lives here. Let me show you around, one small step at a time. It takes about a minute.'},
+      {tab:'tasks', target:'add-task', icon:'tasks', title:'Task',
+       body:'Your own to-do list. Tap here, write what you need to do, and it goes on your list. When it is done, tap the check. That is it. You can also mark it urgent or give it a deadline.',
+       when:'Anything only you need to do.'},
+      {tab:'tasks', icon:'clock', title:'Waiting on someone', art:'waiting',
+       body:'Did your part, and now it is someone else\'s turn? Open the task and pick "Waiting on someone". The task steps off your list so it stops nagging you. On the day you choose, it comes back on its own and reminds you to check.',
+       when:'You sent it, and now you are waiting for an answer.'},
+      {tab:'tasks', icon:'calendar', title:'Set it for later', art:'later',
+       body:'Not for today? Open the task and pick "Set it for later", then choose a day. The task hides until that day, then pops back up by itself. Nothing to remember.',
+       when:'Work for next week, not for now.'},
+      {tab:'tasks', target:'add-coop', icon:'coop', title:'Coop', art:'coop',
+       body:'A coop works like passing a baton. One person holds it and does their part. Then they pass it to the next person. Only one person holds it at a time, so it is always clear whose turn it is.',
+       when:'Work that goes in turns: you write it, they check it, you send it.'},
+      {tab:'tasks', target:'add-role', icon:'roles', title:'Role project', art:'role',
+       body:'One big job, cut into parts. Everyone works at the same time, and each person owns their own part. When every part is done, the whole project is done.',
+       when:'Big work that needs many hands at once, like an opening or an event.'},
+      {tab:'tasks', target:'add-request', icon:'request', title:'Request', art:'request',
+       body:'Need something from a teammate? Send a request. It lands on their list, they accept it and do it, and you watch it get done. You close it when everyone is finished.',
+       when:'You need one thing from someone.'},
+      {tab:'tasks', target:'seg', icon:'tasks', title:'Your lists',
+       body:'Active is what is on you right now. Waiting is parked with someone else. Later is hiding until its day. Done keeps what you finished. All (7d) shows your whole week in one look.'},
+      {tab:'goals', target:'main', ring:'tab-goals', cardPos:'bottom', icon:'goals', title:'Goals',
+       body:'Pick a goal for the year, then smaller ones for the month and the week, and link them together. Small goals climb up to the big one. At the start of every new week and month, WIOS asks you to set and review them.',
+       when:'Monday planning and end-of-period reviews.'},
+      {tab:'daily', target:'main', ring:'tab-daily', cardPos:'bottom', icon:'daily', title:'Recurring',
+       body:'Things you do every day or every week, like the morning report. WIOS pings you at the time you choose, and counts your streak as you keep it going.',
+       when:'Standing routines: reports, store checks, posting.'},
+      {tab:'ask', target:'main', ring:'tab-ask', cardPos:'bottom', icon:'ask', title:'Ask',
+       body:'Ask about your work in plain words: "what did I finish last week?" or "what is stuck?" It knows your records and answers you.'+(me.is_admin?' As admin, you can ask about the whole team.':'')},
+      {tab:'tasks', target:'bell', icon:'bell', title:'Notifications',
+       body:'Every ping you get also lands here. Missed one? It is waiting for you.'},
+      {tab:'tasks', target:'coach', icon:'coach', title:'Your coach',
+       body:'Every Monday your coach looks at your week and tells you honestly what went well and what to do better, to help you grow. You can talk to it any day, not just Monday.'},
+    ];
+    if(me.is_admin){
+      s.push({tab:'tasks', target:'brief', icon:'brief', title:'CEO assistant',
+        body:'Your Monday brief on each leader\'s week: what moved, what stalled, and how they took their coaching. Chat about it, and give standing direction that the coaches quietly follow.'});
+      s.push({tab:'team', target:'main', ring:'tab-team', cardPos:'bottom', icon:'team', title:'Team',
+        body:'Everyone\'s live workload and their 4-week trend, so you can see where things pile up before they become a problem.'});
+    }
+    s.push({tab:'tasks', target:'gear', icon:'gear', title:'Settings',
+      body:'Notifications, your password'+(me.is_admin?', members':'')+', and this tour again any time you want.'});
+    s.push({tab:'tasks', title:'That is the tour', cta:'Start using WIOS',
+      body:'Start small: add one task and set this week\'s goal. If it is in your head, put it in WIOS.'});
+    return s;
+  },[me&&me.is_admin]);
 
   // First run only: offer to turn on notifications once, then never nag again.
   useEffect(()=>{
@@ -4605,15 +4913,15 @@ function App(){
           <div className="wordmark">WIOS</div>
           <div className="sub">Work In One Space</div>
         </div>
-        <button className="iconbtn bell" onClick={()=>setShowNotifs(true)} aria-label="Notifications">
+        <button data-tour="bell" className="iconbtn bell" onClick={()=>setShowNotifs(true)} aria-label="Notifications">
           {ICON.bell}{unreadN>0&&<span className="belldot">{unreadN>9?'9+':unreadN}</span>}
         </button>
-        <button className="iconbtn coach" onClick={()=>{ markCoachSeen(); setShowCoach(true); }} aria-label="Weekly coaching">{ICON.coach}{coachNew&&<span className="belldot dotonly"/>}</button>
-        {me.is_admin&&<button className="iconbtn ceobrief" onClick={()=>{ markBriefSeen(); setShowCeoBrief(true); }} aria-label="CEO assistant">{ICON.brief}{briefNew&&<span className="belldot dotonly"/>}</button>}
-        <button className="iconbtn" onClick={()=>setShowSettings(true)} aria-label="Settings">{ICON.gear}</button>
+        <button data-tour="coach" className="iconbtn coach" onClick={()=>{ markCoachSeen(); setShowCoach(true); }} aria-label="Weekly coaching">{ICON.coach}{coachNew&&<span className="belldot dotonly"/>}</button>
+        {me.is_admin&&<button data-tour="brief" className="iconbtn ceobrief" onClick={()=>{ markBriefSeen(); setShowCeoBrief(true); }} aria-label="CEO assistant">{ICON.brief}{briefNew&&<span className="belldot dotonly"/>}</button>}
+        <button data-tour="gear" className="iconbtn" onClick={()=>setShowSettings(true)} aria-label="Settings">{ICON.gear}</button>
       </div>
 
-      <div className="main">
+      <div className="main" data-tour="main">
         {tab==='tasks'&&<TasksTab me={me} people={people} tasks={tasks}
           coops={coops} members={members} goals={goals}
           requests={requests} reqTargets={reqTargets}
@@ -4629,7 +4937,7 @@ function App(){
 
       <div className="tabbar">
         {tabs.map(t=>(
-          <button key={t.k} className={tab===t.k?'on':''} onClick={()=>{
+          <button key={t.k} data-tour={'tab-'+t.k} className={tab===t.k?'on':''} onClick={()=>{
             if(tab===t.k){ window.scrollTo({top:0,behavior:'smooth'}); }
             else setTab(t.k);
           }}>
@@ -4661,9 +4969,11 @@ function App(){
       )}
       {showSettings&&<SettingsSheet me={me} onClose={()=>setShowSettings(false)}
         openMembers={()=>{ setShowSettings(false); setShowMembers(true); }}
-        goTeam={()=>setTab('team')} openGuide={()=>setShowGuide(true)}/>}
+        goTeam={()=>setTab('team')} openGuide={()=>setShowGuide(true)}
+        openTour={()=>{ setTab('tasks'); setShowTour(true); }}/>}
       {showCoach&&<CoachingSheet me={me} onClose={()=>setShowCoach(false)}/>}
-      {showGuide&&<GuideSheet onClose={closeGuide}/>}
+      {showGuide&&<GuideSheet onClose={closeGuide} tourNext={guideThenTour}/>}
+      {showTour&&!showGuide&&<TourOverlay steps={tourSteps} goTab={setTab} onDone={endTour}/>}
       {showCeoBrief&&<CeoBriefSheet me={me} onClose={()=>setShowCeoBrief(false)}/>}
       {showMembers&&<MembersSheet me={me} people={allPeople}
         onClose={()=>setShowMembers(false)} reload={load}/>}
