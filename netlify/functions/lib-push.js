@@ -112,10 +112,22 @@ async function pushToUsers(userIds, payloadObj, env) {
   const sb = makeSb(env);
   const ids = userIds.map((x) => `"${x}"`).join(',');
   const subs = await sb(`wios_push_subs?user_id=in.(${ids})&select=*`);
+  // Per-user app icon badge: unread in-app notifications. The service worker
+  // applies data.badgeCount via navigator.setAppBadge (iOS 16.4+ / Android).
+  // A push always means at least one new thing, so never send less than 1
+  // (some senders, like cron, push without inserting a feed row first).
+  const badge = {};
+  for (const uid of [...new Set(userIds)]) {
+    try {
+      const rows = await sb(`wios_notifications?user_id=eq.${uid}&read=eq.false&select=id&limit=99`);
+      badge[uid] = Math.max(1, rows.length);
+    } catch (e) { badge[uid] = 1; }
+  }
   let sent = 0;
   for (const s of subs) {
     try {
-      const r = await sendPush(s, payloadObj, env);
+      const p = { ...payloadObj, badgeCount: badge[s.user_id] || 1 };
+      const r = await sendPush(s, p, env);
       if (r.ok) sent++;
       else if (r.gone) {
         await sb(`wios_push_subs?id=eq.${s.id}`, { method: 'DELETE' });

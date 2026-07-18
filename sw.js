@@ -1,6 +1,6 @@
 // WIOS service worker: push + notification click + app badge + fast-open cache.
 // Bump CACHE whenever cache behavior changes so old caches are dropped.
-const CACHE = 'wios-v3';
+const CACHE = 'wios-v5';
 // Only heavy third-party libs are safe to cache-first (they are versioned URLs).
 // The app HTML is NEVER cache-first, so a redeploy always shows immediately.
 const LIBS = [
@@ -29,7 +29,8 @@ self.addEventListener('fetch', (event) => {
   const isLib =
     url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net' ||
     url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-  const isIcon = url.origin === self.location.origin && url.pathname.startsWith('/icons/');
+  const isIcon = url.origin === self.location.origin &&
+    (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/guide-img/'));
 
   // Cache-first ONLY for versioned libs and icons (they don't change without a URL change).
   if (isLib || isIcon) {
@@ -77,8 +78,11 @@ self.addEventListener('push', (event) => {
   };
   event.waitUntil((async () => {
     await self.registration.showNotification(title, options);
-    if (typeof data.badgeCount === 'number' && 'setAppBadge' in self.navigator) {
-      try { await self.navigator.setAppBadge(data.badgeCount); } catch (e) {}
+    if ('setAppBadge' in self.navigator) {
+      try {
+        if (typeof data.badgeCount === 'number') await self.navigator.setAppBadge(data.badgeCount);
+        else await self.navigator.setAppBadge(1);   // a push always means something new
+      } catch (e) {}
     }
   })());
 });
