@@ -764,7 +764,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 // Build marker: bump on every deploy. The app checks the live index.html for a
 // newer marker whenever it returns to the foreground and reloads itself, so a
 // PWA resumed from the app switcher can never keep running stale code.
-const APP_BUILD='wb-20260718-13';
+const APP_BUILD='wb-20260718-14';
 // ---- startup diagnostics -------------------------------------------------
 // Collects how long each boot phase and each initial query takes, so slow
 // starts can be diagnosed on the device itself. Shown to admins only, in a
@@ -5662,7 +5662,7 @@ function App(){
         {tab==='team'&&me.is_admin&&<TeamTab me={me} people={people} coops={coops} members={members}/>}
       </div>
 
-      {(me&&me.is_admin||PERF_FORCE)&&<PerfPanel/>}
+      {PERF_FORCE&&<PerfPanel/>}
       <div className="tabbar">
         {tabs.map(t=>(
           <button key={t.k} data-tour={'tab-'+t.k} className={tab===t.k?'on':''} onClick={()=>{
