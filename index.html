@@ -127,6 +127,19 @@ body.kb-open .tabbar{transform:translateX(-50%) translateY(200%);pointer-events:
 .wkcell .ct.hot{color:var(--red);}
 .wkcell.on{background:rgba(234,191,112,.16);border-color:var(--gold);}
 .wkfree{font-size:12px;color:var(--muted2);padding:2px 4px 10px;}
+.reclbl{font-size:10.5px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px;margin:8px 2px 5px;}
+.recrow{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:8px 10px;margin-bottom:6px;}
+.recrow .recic{display:flex;color:var(--muted);}
+.recrow .recic svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.recrow .tt2{font-size:12.5px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.recrow .rtime{font-size:11px;color:var(--muted2);font-weight:600;}
+.recrow.done .tt2{color:var(--muted2);text-decoration:line-through;}
+.wkcell{position:relative;}
+.calcell{position:relative;}
+.rdot{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--teal);}
+.wkcell.on .rdot,.calcell.on .rdot{background:var(--gold);}
 
 .seg button{flex:1;min-width:0;padding:10px 2px;border-radius:9px;color:var(--muted);font-size:11.5px;
   font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:40px;}
@@ -733,7 +746,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 // Build marker: bump on every deploy. The app checks the live index.html for a
 // newer marker whenever it returns to the foreground and reloads itself, so a
 // PWA resumed from the app switcher can never keep running stale code.
-const APP_BUILD='wb-20260718-7';
+const APP_BUILD='wb-20260718-11';
 
 const PERIOD_TYPES = ['week','month','semester','year'];
 const PLABEL = {week:'Weekly',month:'Monthly',semester:'Semester',year:'Yearly'};
@@ -1001,7 +1014,7 @@ function Login(){
 }
 
 /* ── tasks ───────────────────────────────────────────────── */
-function TasksTab({me, people, tasks, coops, members, goals, requests, reqTargets, surveys, svTargets, roleProjects, roleMembers, roleItems, reload, openCoopId, setOpenCoopId, gotoGoals}){
+function TasksTab({me, people, tasks, coops, members, goals, recs, acks, requests, reqTargets, surveys, svTargets, roleProjects, roleMembers, roleItems, reload, openCoopId, setOpenCoopId, gotoGoals}){
   const [seg,setSeg]=useState('active');
   const [slideDir,setSlideDir]=useState(0);   // -1 slide from left, 1 from right, for the swipe feel
   const [quick,setQuick]=useState('');
@@ -1042,42 +1055,56 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   const myM=id=>members.find(m=>m.coop_id===id&&m.user_id===me.id);
 
   // Coops I'm part of, split by whose turn it is.
+  // Per-person finish confirmation: a closed shared item goes to YOUR Done
+  // only after YOU confirm it. One person closing never files it away for
+  // everyone else (Role projects already worked this way; now all types do).
+  const ackSet=useMemo(()=>new Set((acks||[]).map(a=>a.kind+':'+a.item_id)),[acks]);
+  const acked=(kind,id)=>ackSet.has(kind+':'+id);
+  async function ackFinish(kind,id){
+    try{
+      await sb.from('wios_finish_acks').upsert(
+        {user_id:me.id, kind, item_id:id},
+        {onConflict:'user_id,kind,item_id'});
+      reload();
+    }catch(e){ alert('Could not confirm: '+e.message); }
+  }
   const coopGroups=useMemo(()=>{
-    const mine=[], theirs=[], closed=[];
+    const mine=[], theirs=[], closed=[], finished=[];
     (coops||[]).forEach(c=>{
       if(hiddenIds.has(c.id)) return;
       const m=members.find(x=>x.coop_id===c.id&&x.user_id===me.id);
       const involved=!!m||c.creator_id===me.id;
       if(!involved) return;
-      if(c.status==='closed'){ closed.push(c); return; }
+      if(c.status==='closed'){ (acked('coop',c.id)?closed:finished).push(c); return; }
       if(c.holder_id===me.id){ mine.push(c); return; }      // my turn -> Active
       theirs.push(c);                                        // waiting on someone else -> Waiting
     });
-    return {mine,theirs,closed};
-  },[coops,members,me.id,hiddenIds]);
+    return {mine,theirs,closed,finished};
+  },[coops,members,me.id,hiddenIds,ackSet]);
 
   const [showNewRequest,setShowNewRequest]=useState(false);
   const [openReqId,setOpenReqId]=useState(null);
   // Requests: no accept step. Anything sent to me is immediately my to-do
   // (Active); sent-by-me is tracked as a card; done keeps the record.
   const reqGroups=useMemo(()=>{
-    const todo=[], sent=[], done=[];
+    const todo=[], sent=[], done=[], finished=[];
     (requests||[]).forEach(r=>{
       if(hiddenIds.has(r.id)) return;
       const myT=reqTargets.find(t=>t.request_id===r.id&&t.user_id===me.id);
       const iSent=r.creator_id===me.id;
       if(iSent){
-        (r.status==='done'?done:sent).push(r);
+        if(r.status==='done'){ (acked('request',r.id)?done:finished).push(r); }
+        else sent.push(r);
       } else if(myT){
         if(r.status==='done'){
-          // closed by the asker: keep a record in Done for anyone who took part
-          if(myT.status!=='declined') done.push(r);
+          // closed by the asker: each participant confirms it into their own Done
+          if(myT.status!=='declined') (acked('request',r.id)?done:finished).push(r);
         } else if(myT.status==='pending'||myT.status==='accepted') todo.push(r);
         // myT.status==='completed' && open: waiting on others, hidden from my Active
       }
     });
-    return {todo,sent,done};
-  },[requests,reqTargets,me.id,hiddenIds]);
+    return {todo,sent,done,finished};
+  },[requests,reqTargets,me.id,hiddenIds,ackSet]);
   const reqTargetsOf=id=>reqTargets.filter(t=>t.request_id===id);
 
   const [showNewSurvey,setShowNewSurvey]=useState(false);
@@ -1087,24 +1114,24 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   // sentWaiting (I created, someone still has to answer) -> Waiting,
   // sentReady (I created, everyone answered) -> back to my Active to review, done.
   const svGroups=useMemo(()=>{
-    const incoming=[], sentWaiting=[], sentReady=[], done=[];
+    const incoming=[], sentWaiting=[], sentReady=[], done=[], finished=[];
     (surveys||[]).forEach(sv=>{
       if(hiddenIds.has(sv.id)) return;
       const myT=svTargets.find(t=>t.survey_id===sv.id&&t.user_id===me.id);
       if(sv.creator_id===me.id){
-        if(sv.status==='done'){ done.push(sv); return; }
+        if(sv.status==='done'){ (acked('survey',sv.id)?done:finished).push(sv); return; }
         const ts=svTargets.filter(t=>t.survey_id===sv.id);
         const allIn=ts.length>0&&ts.every(t=>t.status==='answered');
         (allIn?sentReady:sentWaiting).push(sv);
       }
       else if(myT){
-        if(sv.status==='done'){ if(myT.status==='answered') done.push(sv); }
+        if(sv.status==='done'){ if(myT.status==='answered') (acked('survey',sv.id)?done:finished).push(sv); }
         else if(myT.status==='pending') incoming.push(sv);
         // answered && still open: waiting on the others, hidden from my Active
       }
     });
-    return {incoming,sentWaiting,sentReady,done};
-  },[surveys,svTargets,me.id,hiddenIds]);
+    return {incoming,sentWaiting,sentReady,done,finished};
+  },[surveys,svTargets,me.id,hiddenIds,ackSet]);
 
   // ── Role projects ──
   const [showNewRole,setShowNewRole]=useState(false);
@@ -1184,6 +1211,9 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     lists.scheduled.forEach(t=>{ if(t.scheduled_at&&idxOf(t.scheduled_at)<=6) put(t.scheduled_at,{k:'task',t},false); });
     [...roleGroups.active,...roleGroups.waiting].forEach(p=>{ const it={k:'role',p};
       if(p.due_at) put(p.due_at,it,dueSoon(p.due_at)); else noDate.push(it); });
+    coopGroups.finished.forEach(c=>noDate.push({k:'coop',c,fin:true}));
+    reqGroups.finished.forEach(r=>noDate.push({k:'req',r,sent:r.creator_id===me.id,fin:true}));
+    svGroups.finished.forEach(sv=>noDate.push({k:'sv',sv,fin:true}));
     coopGroups.mine.forEach(c=>noDate.push({k:'coop',c}));
     coopGroups.theirs.forEach(c=>noDate.push({k:'coop',c}));
     reqGroups.todo.forEach(r=>noDate.push({k:'req',r}));
@@ -1195,9 +1225,9 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   function renderWkItem(it){
     if(it.k==='task') return renderTaskCard(it.t);
     if(it.k==='role') return <RoleCard key={it.p.id} p={it.p}/>;
-    if(it.k==='coop') return <CoopCard key={it.c.id} c={it.c}/>;
-    if(it.k==='req')  return <RequestCard key={it.r.id} r={it.r} sent={!!it.sent}/>;
-    if(it.k==='sv')   return <SurveyCard key={it.sv.id} sv={it.sv} sent/>;
+    if(it.k==='coop') return <CoopCard key={it.c.id} c={it.c} finished={!!it.fin}/>;
+    if(it.k==='req')  return <RequestCard key={it.r.id} r={it.r} sent={!!it.sent} finished={!!it.fin}/>;
+    if(it.k==='sv')   return <SurveyCard key={it.sv.id} sv={it.sv} sent={it.fin?it.sv.creator_id===me.id:true} finished={!!it.fin}/>;
     return null;
   }
   const WKD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1208,6 +1238,35 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const [calOpen,setCalOpen]=useState(false);
   const [wkOpen,setWkOpen]=useState(false);
+  // Recurring done-marks for the overviews. Fetched when a view opens so the
+  // checkmarks reflect what was ticked off in the Daily tab just now.
+  const [recLogs,setRecLogs]=useState([]);
+  useEffect(()=>{ if(!(wkOpen||calOpen)) return; let dead=false;
+    (async()=>{ try{
+      const {data}=await sb.from('wios_recurring_logs').select('*');
+      if(!dead) setRecLogs(data||[]);
+    }catch(e){} })();
+    return ()=>{ dead=true; };
+  },[wkOpen,calOpen]);
+  const myRecs=useMemo(()=>(recs||[]).filter(r=>r.active),[recs]);
+  const recsOnDate=d=>myRecs.filter(r=>isDueOn(r,d));
+  // Weekly and monthly routines get a small marker dot on the day cells so
+  // things like "payroll every Monday" are visible on the grid itself.
+  // Daily routines land on every single day, so marking them would just be
+  // noise: they show in the day list only.
+  const recMark=d=>myRecs.some(r=>r.freq!=='daily'&&isDueOn(r,d));
+  const recDone=(recId,key)=>recLogs.some(l=>l.rec_id===recId&&l.done_date===key);
+  function renderRecRow(r,key){
+    const done=recDone(r.id,key);
+    return (
+      <div key={'rec-'+r.id+key} className={'recrow'+(done?' done':'')}>
+        <span className="recic">{ICON.daily}</span>
+        <span className="grow tt2">{r.title}</span>
+        <span className="rtime">{timeLabel(r.time_hhmm)}</span>
+        {done&&<span className="chip ok">Done</span>}
+      </div>
+    );
+  }
   const [calBase,setCalBase]=useState(()=>{ const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
   const [calSel,setCalSel]=useState(()=>isoDate(new Date()));
   function calShift(n){ const d=new Date(calBase); d.setMonth(d.getMonth()+n); setCalBase(d); setCalSel(null); }
@@ -1418,7 +1477,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     setBusy(false);
   }
 
-  function CoopCard({c}){
+  function CoopCard({c, finished}){
     const mineTurn=c.holder_id===me.id&&c.status==='active';
     return (
       <div className={'card coopcard'+(mineTurn?' turn':'')} onClick={()=>setOpenCoopId(c.id)}>
@@ -1440,6 +1499,10 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
             <button className="trash" onClick={e=>{e.stopPropagation();deleteCoopCard(c);}} aria-label="Delete coop">{ICON.trash}</button>
           )}
         </div>
+        {finished&&(
+          <button className="btn btn-gold btn-sm" style={{width:'100%',marginTop:10}}
+            onClick={e=>{e.stopPropagation();ackFinish('coop',c.id);}}>Confirm done</button>
+        )}
       </div>
     );
   }
@@ -1467,6 +1530,8 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     setBusy(true);
     try{
       await sb.from('wios_requests').update({status:'done',closed_at:nowIso()}).eq('id',r.id);
+      await sb.from('wios_finish_acks').upsert({user_id:me.id,kind:'request',item_id:r.id},
+        {onConflict:'user_id,kind,item_id'});
       reload();
     }catch(e){ alert(e.message||'Could not close.'); }
     setBusy(false);
@@ -1507,6 +1572,8 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     setBusy(true);
     try{
       await sb.from('wios_surveys').update({status:'done',closed_at:nowIso()}).eq('id',sv.id);
+      await sb.from('wios_finish_acks').upsert({user_id:me.id,kind:'survey',item_id:sv.id},
+        {onConflict:'user_id,kind,item_id'});
       reload();
     }catch(e){ alert(e.message||'Could not close.'); }
     setBusy(false);
@@ -1657,7 +1724,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
     );
   }
 
-  function RequestCard({r, sent}){
+  function RequestCard({r, sent, finished}){
     const targets=reqTargetsOf(r.id);
     const active=targets.filter(t=>t.status!=='declined');
     const doneN=targets.filter(t=>t.status==='completed').length;
@@ -1683,11 +1750,15 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
           <button className="btn btn-gold btn-sm" style={{width:'100%',marginTop:10}} disabled={busy}
             onClick={e=>{e.stopPropagation();closeRequest(r);}}>Everyone is done, close it</button>
         )}
+        {finished&&(
+          <button className="btn btn-gold btn-sm" style={{width:'100%',marginTop:10}}
+            onClick={e=>{e.stopPropagation();ackFinish('request',r.id);}}>Confirm done</button>
+        )}
       </div>
     );
   }
 
-  function SurveyCard({sv, incoming, sent}){
+  function SurveyCard({sv, incoming, sent, finished}){
     const targets=svTargetsOf(sv.id);
     const doneN=targets.filter(t=>t.status==='answered').length;
     return (
@@ -1717,11 +1788,16 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
           <button className="btn btn-gold btn-sm" style={{width:'100%',marginTop:10}} disabled={busy}
             onClick={e=>{e.stopPropagation();closeSurvey(sv);}}>Everyone answered, close it</button>
         )}
+        {finished&&(
+          <button className="btn btn-gold btn-sm" style={{width:'100%',marginTop:10}}
+            onClick={e=>{e.stopPropagation();ackFinish('survey',sv.id);}}>Confirm done</button>
+        )}
       </div>
     );
   }
 
-  const activeN=lists.active.length+coopGroups.mine.length+reqGroups.todo.length+svGroups.sentReady.length;
+  const finishedN=coopGroups.finished.length+reqGroups.finished.length+svGroups.finished.length;
+  const activeN=lists.active.length+coopGroups.mine.length+reqGroups.todo.length+svGroups.sentReady.length+finishedN;
   const waitingN=lists.waiting.length+coopGroups.theirs.length+svGroups.sentWaiting.length;
   const segItems=[
     {k:'active',l:`Active${activeN?` ${activeN}`:''}`, w:1.2},
@@ -1797,6 +1873,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
           <div className="row">
             {canDrag&&<span className="draghandle" aria-label="Drag to reorder"
               onPointerDown={e=>startDrag(t.id,e)} onClick={e=>e.stopPropagation()}>{ICON.grip}</span>}
+            <span className="coopmark" aria-label="Task">{ICON.tasks}</span>
             <div className="grow">
               <div className={'tt'+(t.status==='done'?' done':'')}>{t.title}</div>
               <div className="meta">
@@ -1888,16 +1965,22 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
                   onClick={()=>setCalSel(c.key)}>
                   <span className="dn">{c.d}</span>
                   <span className={'ct'+((calMap[c.key]||{}).hot?' hot':'')}>{(calMap[c.key]||{items:[]}).items.length||''}</span>
+                  {recMark(new Date(c.key+'T00:00:00'))&&<span className="rdot" aria-label="Recurring"/>}
                 </button>
               ))}
           </div>
           {calSel&&(()=>{ const d=new Date(calSel+'T00:00:00'); const box=calMap[calSel]||{items:[]};
+            const dayRecs=recsOnDate(d);
             return (
               <>
                 <div className="sect">{(calSel===todayKey?'Today':WKD[d.getDay()])+' \u00b7 '+(d.getMonth()+1)+'/'+d.getDate()}
                   {box.items.length>0&&<span className="n">{box.items.length}</span>}</div>
-                {box.items.length===0&&<div className="wkfree">Nothing on this day.</div>}
+                {box.items.length===0&&dayRecs.length===0&&<div className="wkfree">Nothing on this day.</div>}
                 {box.items.map(it=>renderWkItem(it))}
+                {dayRecs.length>0&&(<>
+                  <div className="reclbl">Recurring</div>
+                  {dayRecs.map(r=>renderRecRow(r,calSel))}
+                </>)}
               </>
             ); })()}
           {!calSel&&<div className="wkfree">Tap a date to see that day.</div>}
@@ -1924,22 +2007,33 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
                     <span className="wd">{i===0?'Today':WKD[day.d.getDay()]}</span>
                     <span className="dn">{day.d.getDate()}</span>
                     <span className={'ct'+(day.hot?' hot':'')}>{day.items.length||''}</span>
+                    {recMark(day.d)&&<span className="rdot" aria-label="Recurring"/>}
                   </button>
                 ))}
               </div>
               <div className="sect">{wkLabel(wkSel)} {week.days[wkSel].items.length>0&&<span className="n">{week.days[wkSel].items.length}</span>}</div>
-              {week.days[wkSel].items.length===0&&<div className="wkfree">Nothing on this day.</div>}
+              {week.days[wkSel].items.length===0&&recsOnDate(week.days[wkSel].d).length===0&&<div className="wkfree">Nothing on this day.</div>}
               {week.days[wkSel].items.map(it=>renderWkItem(it))}
+              {recsOnDate(week.days[wkSel].d).length>0&&(<>
+                <div className="reclbl">Recurring</div>
+                {recsOnDate(week.days[wkSel].d).map(r=>renderRecRow(r,isoDate(week.days[wkSel].d)))}
+              </>)}
             </>
           )}
-          {wkMode==='agenda'&&week.days.map((day,i)=>(
-            <div key={i}>
-              <div className="sect">{wkLabel(i)} {day.items.length>0&&<span className="n">{day.items.length}</span>}</div>
-              {day.items.length===0
-                ? <div className="wkfree">Free</div>
-                : day.items.map(it=>renderWkItem(it))}
-            </div>
-          ))}
+          {wkMode==='agenda'&&week.days.map((day,i)=>{
+            const dayRecs=recsOnDate(day.d);
+            return (
+              <div key={i}>
+                <div className="sect">{wkLabel(i)} {day.items.length>0&&<span className="n">{day.items.length}</span>}</div>
+                {day.items.length===0&&dayRecs.length===0&&<div className="wkfree">Free</div>}
+                {day.items.map(it=>renderWkItem(it))}
+                {dayRecs.length>0&&(<>
+                  <div className="reclbl">Recurring</div>
+                  {dayRecs.map(r=>renderRecRow(r,isoDate(day.d)))}
+                </>)}
+              </div>
+            );
+          })}
           {week.after.length>0&&(<>
             <div className="sect">After this week <span className="n">{week.after.length}</span></div>
             {week.after.map(it=>renderWkItem(it))}
@@ -1961,6 +2055,12 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
         </>
       )}
 
+      {seg==='active'&&finishedN>0&&(<>
+        <div className="sect">Finished, confirm <span className="n">{finishedN}</span></div>
+        {coopGroups.finished.map(c=><CoopCard key={c.id} c={c} finished/>)}
+        {reqGroups.finished.map(r=><RequestCard key={r.id} r={r} sent={r.creator_id===me.id} finished/>)}
+        {svGroups.finished.map(sv=><SurveyCard key={sv.id} sv={sv} sent={sv.creator_id===me.id} finished/>)}
+      </>)}
       {seg==='active'&&coopGroups.mine.map(c=><CoopCard key={c.id} c={c}/>)}
       {seg==='active'&&reqGroups.todo.map(r=><RequestCard key={r.id} r={r}/>)}
       {seg==='active'&&reqGroups.sent.map(r=><RequestCard key={r.id} r={r} sent/>)}
@@ -1977,7 +2077,7 @@ function TasksTab({me, people, tasks, coops, members, goals, requests, reqTarget
 
       {!calOpen&&!wkOpen&&lists[seg].length===0&&coopGroups.mine.length===0&&coopGroups.theirs.length===0&&
        coopGroups.closed.length===0&&
-       !(seg==='active'&&(reqGroups.todo.length||reqGroups.sent.length||roleGroups.active.length||svGroups.incoming.length||svGroups.sentReady.length))&&
+       !(seg==='active'&&(reqGroups.todo.length||reqGroups.sent.length||roleGroups.active.length||svGroups.incoming.length||svGroups.sentReady.length||finishedN))&&
        !(seg==='waiting'&&(roleGroups.waiting.length||svGroups.sentWaiting.length))&&
        !(seg==='done'&&(reqGroups.done.length||roleGroups.done.length||svGroups.done.length))&&(
         <div className="empty">
@@ -2887,6 +2987,8 @@ function CoopDetail({me, people, coop, members, onClose, reload}){
     setBusy(true);
     try{
       await sb.from('wios_coops').update({status:'closed',closed_at:nowIso(),closed_by:me.id}).eq('id',coop.id);
+      await sb.from('wios_finish_acks').upsert({user_id:me.id,kind:'coop',item_id:coop.id},
+        {onConflict:'user_id,kind,item_id'});
       await sb.from('wios_coop_messages').insert({coop_id:coop.id,user_id:me.id,kind:'system',
         body:`Completed and closed by ${label(me.id)}`});
       notifyUsers(everyone.filter(x=>x!==me.id), `Completed: ${coop.title}`, `Closed by ${label(me.id)}`, coop.id);
@@ -5059,7 +5161,8 @@ function App(){
   const [allPeople,setAllPeople]=useState([]); // incl. deactivated, for the Members sheet
   const [tasks,setTasks]=useState([]); const [coops,setCoops]=useState([]); const [members,setMembers]=useState([]);
   const [requests,setRequests]=useState([]); const [reqTargets,setReqTargets]=useState([]);
-  const [surveys,setSurveys]=useState([]); const [svTargets,setSvTargets]=useState([]);
+  const [surveys,setSurveys]=useState([]);
+  const [acks,setAcks]=useState([]); const [svTargets,setSvTargets]=useState([]);
   const [roleProjects,setRoleProjects]=useState([]); const [roleMembers,setRoleMembers]=useState([]); const [roleItems,setRoleItems]=useState([]);
   const [goals,setGoals]=useState([]); const [gps,setGps]=useState([]); const [recs,setRecs]=useState([]);
   const [tab,setTab]=useState('tasks');
@@ -5122,7 +5225,7 @@ function App(){
        body:'One big job, cut into parts. Everyone works at the same time, and each person owns their own part. When every part is done, the whole project is done.',
        when:'Big work that needs many hands at once, like an opening or an event.'},
       {tab:'tasks', target:'add-request', icon:'request', title:'Request', art:'request',
-       body:'Need something from a teammate? Send a request. It lands on their list, they accept it and do it, and you watch it get done. You close it when everyone is finished.',
+       body:'Need something from a teammate? Send a request. It lands straight on their list with a ping, they do it and mark it done, and you watch it get done. You close it when everyone is finished.',
        when:'You need one thing from someone.'},
       {tab:'tasks', target:'add-survey', icon:'survey', title:'Survey', art:'survey',
        body:'Ask the team questions with answer choices, like A, B or C. It lands at the top of each person\u2019s list with a ping. Your copy sits in Waiting, and the moment everyone has answered it comes back to your Tasks with one ping. Answers are private: only you see everyone\u2019s results.',
@@ -5248,7 +5351,7 @@ function App(){
     const {data:{user}}=await sb.auth.getUser();
     if(!user) return;
     setBusy(true);
-    const [pRes,tRes,cRes,mRes,gRes,gpRes,rRes,nRes,reqRes,rtRes,rpRes,rmRes,riRes,svRes,svtRes]=await Promise.all([
+    const [pRes,tRes,cRes,mRes,gRes,gpRes,rRes,nRes,reqRes,rtRes,rpRes,rmRes,riRes,svRes,svtRes,ackRes]=await Promise.all([
       sb.from('wios_profiles').select('*').order('created_at'),
       sb.from('wios_tasks').select('*').eq('owner_id',user.id),
       sb.from('wios_coops').select('*').order('created_at',{ascending:false}),
@@ -5264,6 +5367,7 @@ function App(){
       sb.from('wios_role_items').select('*'),
       sb.from('wios_surveys').select('*').order('created_at',{ascending:false}),
       sb.from('wios_survey_targets').select('*'),
+      sb.from('wios_finish_acks').select('*').eq('user_id',user.id),
     ]);
     const all=pRes.data||[];
     const mine=all.find(p=>p.id===user.id);
@@ -5277,6 +5381,7 @@ function App(){
     setNotifs(nRes.data||[]);
     setRequests(reqRes.data||[]); setReqTargets(rtRes.data||[]);
     setSurveys(svRes.data||[]); setSvTargets(svtRes.data||[]);
+    setAcks(ackRes.data||[]);
     setRoleProjects(rpRes.data||[]); setRoleMembers(rmRes.data||[]); setRoleItems(riRes.data||[]);
     setBusy(false);
 
@@ -5451,7 +5556,7 @@ function App(){
 
       <div className="main" data-tour="main">
         {tab==='tasks'&&<TasksTab me={me} people={people} tasks={tasks}
-          coops={coops} members={members} goals={goals}
+          coops={coops} members={members} goals={goals} recs={recs} acks={acks}
           requests={requests} reqTargets={reqTargets}
           surveys={surveys} svTargets={svTargets}
           roleProjects={roleProjects} roleMembers={roleMembers} roleItems={roleItems}
