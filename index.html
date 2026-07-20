@@ -513,6 +513,7 @@ body.kb-open .askwrap{bottom:calc(var(--kb, 0px) + env(safe-area-inset-bottom) +
 .gschip svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.9;fill:none;}
 .gshead{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.02em;}
 .gsbody{font-size:13px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gsline{font-size:13px;color:var(--text);margin-top:2px;line-height:1.35;}
 
 /* add task / add coop row */
 .addrow{display:flex;gap:10px;margin:0 0 14px;}
@@ -764,7 +765,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 // Build marker: bump on every deploy. The app checks the live index.html for a
 // newer marker whenever it returns to the foreground and reloads itself, so a
 // PWA resumed from the app switcher can never keep running stale code.
-const APP_BUILD='wb-20260718-14';
+const APP_BUILD='wb-20260718-15';
 // ---- startup diagnostics -------------------------------------------------
 // Collects how long each boot phase and each initial query takes, so slow
 // starts can be diagnosed on the device itself. Shown to admins only, in a
@@ -2003,11 +2004,11 @@ function TasksTab({me, people, tasks, coops, members, goals, recs, acks, request
           <span className="gschip">{ICON.goals}</span>
           <div className="grow">
             <div className="gshead">This week ({weekDone}/{weekGoals.length})</div>
-            <div className="gsbody">
-              {weekOpen.length>0
-                ? weekOpen.map(g=>g.title).join('  ·  ')
-                : 'All done for this week'}
-            </div>
+            {weekOpen.length>0
+              ? weekOpen.map(g=>(
+                  <div key={g.id} className="gsline">{g.title}</div>
+                ))
+              : <div className="gsline">All done for this week</div>}
           </div>
           <span style={{color:'var(--muted2)',flex:'none'}}>›</span>
         </button>
