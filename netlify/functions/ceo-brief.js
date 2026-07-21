@@ -240,7 +240,17 @@ ${block}`;
 1. Reply normally and briefly confirm you will pass it to the coaching, in your own words.
 2. On the VERY LAST line of your reply, append a machine tag exactly in this format, nothing after it:
 [[DIRECTIVE target=<user id, or ALL> text=<the directive rewritten as a clear instruction to a coach>]]
-Use ALL for the whole team, or the specific user id from the roster for one person. Only append the tag when there is a real directive. Never append it for ordinary questions. The tag will be removed before the CEO sees your reply, so do not reference it.
+Use ALL for the whole team, or the specific user id from the roster for one person. Only append the tag when there is a real ONE-TIME directive to act on now. Never append it for ordinary questions.
+
+RECURRING SCHEDULE PROTOCOL: The CEO may instead ask for something to happen on a repeating day and time (for example "every Friday at noon each coach checks their goals" or "remind the team to reflect every Monday morning"). For a recurring request, append this tag on the last line instead:
+[[SCHEDULE target=<user id, or ALL> dow=<0=Sun..6=Sat> time=<HH:MM 24h ET> label=<a few words> text=<what the coach should raise, as a clear instruction>]]
+The times are US Eastern. Use ALL for the whole team. Pick the dow that matches the day named (Monday=1 ... Friday=5). If the CEO does not give a time, use 12:00.
+
+CANCEL PROTOCOL: If the CEO asks to stop or cancel a recurring coaching schedule, append:
+[[CANCEL label=<the label or a few words describing which schedule> target=<user id, or ALL>]]
+If they clearly mean all schedules, use label=ALL.
+
+Only ever append ONE tag, on the very last line. The tag is removed before the CEO sees your reply, so never reference it. If a request is a normal question, append no tag.
 ROSTER: ${roster}`;
 
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -303,6 +313,51 @@ ROSTER: ${roster}`;
           } catch (e) { console.error('directive-fire dispatch failed', e); }
         }
         answer = answer.replace(dm[0], '').trim();
+      }
+
+      // Recurring schedule tag: create a standing coach schedule.
+      const sm = answer.match(/\[\[SCHEDULE\s+target=(\S+)\s+dow=(\d)\s+time=(\d{1,2}:\d{2})\s+label=([^\]]*?)\s+text=([\s\S]*?)\]\]/i);
+      if (sm) {
+        const rawTarget = sm[1].trim();
+        let target = /^all$/i.test(rawTarget) ? null : rawTarget;
+        if (target) {
+          const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+          if (!uuidLike) target = null;
+          else {
+            const exists = await sb(`wios_profiles?id=eq.${target}&active=eq.true&select=id&limit=1`);
+            if (!exists.length) target = null;
+          }
+        }
+        const dow = Math.max(0, Math.min(6, parseInt(sm[2], 10)));
+        const time = sm[3].length === 4 ? '0' + sm[3] : sm[3];
+        const label = sm[4].trim().slice(0, 60) || 'coaching check-in';
+        const text = sm[5].trim().slice(0, 1000);
+        if (text) {
+          try {
+            await sb('wios_coach_schedules', {
+              method: 'POST', headers: { 'Prefer': 'return=minimal' },
+              body: JSON.stringify({ created_by: me.id, target_user_id: target, directive: text, dow, hhmm: time, label }),
+            });
+          } catch (e) { console.error('schedule store failed', e); }
+        }
+        answer = answer.replace(sm[0], '').trim();
+      }
+
+      // Cancel tag: deactivate matching recurring schedules.
+      const cm = answer.match(/\[\[CANCEL\s+label=([^\]]*?)\s+target=(\S+)\]\]/i);
+      if (cm) {
+        const label = cm[1].trim();
+        const rawTarget = cm[2].trim();
+        try {
+          let q = 'wios_coach_schedules?active=eq.true';
+          if (!/^all$/i.test(rawTarget)) q += `&target_user_id=eq.${rawTarget}`;
+          if (!/^all$/i.test(label)) q += `&label=ilike.*${encodeURIComponent(label)}*`;
+          await sb(q, {
+            method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ active: false }),
+          });
+        } catch (e) { console.error('schedule cancel failed', e); }
+        answer = answer.replace(cm[0], '').trim();
       }
       await sb('wios_ceo_brief_messages', {
         method: 'POST',

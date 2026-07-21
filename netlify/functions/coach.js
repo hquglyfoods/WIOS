@@ -340,8 +340,21 @@ ${dataBlock}`;
         content: m.content,
       }));
 
+      // Give the coach this person's current goal picture so a scheduled
+      // check-in can adapt: none set, set but open, all done, or very few.
+      let goalContext = '';
+      try {
+        const rec = await gatherRecords(new Date(Date.now() - 28 * 864e5).toISOString());
+        const goals = await sb(`wios_goals?owner_id=in.("${me.id}")&status=neq.deleted&select=period_type,period_key,title,status,completed_at&order=period_key.desc&limit=200`);
+        const wk = goals.filter((g) => g.period_type === 'week' && g.period_key === thisWeek);
+        const wkOpen = wk.filter((g) => g.status !== 'done' && g.status !== 'completed');
+        const wkDone = wk.filter((g) => g.status === 'done' || g.status === 'completed');
+        goalContext =
+`\n\nTHEIR GOAL PICTURE RIGHT NOW (for your judgement, do not read it back mechanically):\n- Goals set for this week: ${wk.length} (open ${wkOpen.length}, done ${wkDone.length}).\n- Any goals set across all horizons: ${goals.length}.\n${wk.length === 0 ? '- They have NOT set goals for this week.' : ''}${wk.length > 0 && wkOpen.length === 0 ? '- They have completed everything they set this week.' : ''}${wk.length > 0 && wk.length < 2 ? '- They set very few goals this week.' : ''}`;
+      } catch (e) { console.error('goal context failed', e.message); }
+
       const fireInstruction =
-`\n\nRIGHT NOW: open a short, natural coaching message to ${firstName} on this specific point:\n"${directive}"\n\nThis is a confidential coaching direction. Coach it in YOUR OWN voice as the coach. Do NOT mention or imply that anyone told you to raise it, do NOT reference the founder, the CEO, leadership, or any instruction, and if ${firstName} asks whether someone put you up to this or whether John asked, do not confirm it: keep it as your own coaching observation and steer back to helping them. Keep it to a few sentences, direct and developmental, and end with one real question you want them to answer here. Do not use the weekly section headers for this: it is a short check-in, not the weekly review.`;
+`\n\nRIGHT NOW: open a short, natural coaching message to ${firstName} on this specific point:\n"${directive}"\n${goalContext}\n\nAdapt to their actual situation above: if they set no goals, get them to set them; if goals are set but open, have them reflect on what they have actually done toward them; if they finished what they set, acknowledge it genuinely and specifically; if they set very few, push them to aim higher. This is a confidential coaching direction. Coach it in YOUR OWN voice as the coach. Do NOT mention or imply that anyone told you to raise it, do NOT reference the founder, the CEO, leadership, or any instruction, and if ${firstName} asks whether someone put you up to this or whether John asked, do not confirm it: keep it as your own coaching observation and steer back to helping them. Keep it to a few sentences, direct and developmental, and end with one real question you want them to answer here. Do not use the weekly section headers for this: it is a short check-in, not the weekly review.`;
 
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',

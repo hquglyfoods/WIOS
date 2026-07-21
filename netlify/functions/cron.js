@@ -27,6 +27,14 @@ function etParts(d = new Date()) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
+// "HH:MM" plus n minutes, clamped within the same day (returns "24:00" past midnight)
+function addMinutes(hhmm, n) {
+  const [h, m] = hhmm.split(':').map(Number);
+  let total = h * 60 + m + n;
+  if (total >= 24 * 60) total = 24 * 60;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+
 function periodKeys(et) {
   // week key = Monday of the current ET week, as YYYY-MM-DD
   const base = new Date(Date.UTC(et.y, et.m - 1, et.day));
@@ -252,8 +260,55 @@ exports.handler = async () => {
       }
     }
 
-    // ── 5. Monday 10:00 ET: generate weekly coaching for everyone (and the CEO brief for
-    //    admins), then push. The cron runs every 30 min, so fire in the 10:00 to 10:29 window.
+    // ── 6. Recurring coach schedules (e.g. "every Friday noon ET, each coach
+    //    checks the person's goals and nudges"). Fires in the scheduled 30-min
+    //    window, at most once per scheduled day, on any day John set. John
+    //    creates/cancels these through his CEO assistant. ──
+    {
+      const base = (env.URL || env.DEPLOY_PRIME_URL || '').replace(/\/$/, '');
+      const svc = env.SUPABASE_SERVICE_KEY;
+      if (base && svc) {
+        let scheds = [];
+        try { scheds = await sb(`wios_coach_schedules?active=eq.true&dow=eq.${et.dow}&select=*`); }
+        catch (e) { console.error('coach schedules load', e.message); }
+        for (const s of scheds) {
+          const hhmm = s.hhmm || '12:00';
+          // fire in the [hhmm, hhmm+30min) window; cron ticks every 30 min
+          if (et.hhmm < hhmm) continue;
+          if (et.hhmm >= addMinutes(hhmm, 30)) continue;
+          if (s.last_fired_date === et.dateStr) continue;   // already fired today
+          // mark first so a slow fan-out cannot double-fire on the next tick
+          try {
+            await sb(`wios_coach_schedules?id=eq.${s.id}`, {
+              method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
+              body: JSON.stringify({ last_fired_date: et.dateStr }),
+            });
+          } catch (e) { console.error('schedule stamp failed', s.id, e.message); continue; }
+
+          let recipients = [];
+          try {
+            if (s.target_user_id) recipients = [s.target_user_id];
+            else {
+              const all = await sb('wios_profiles?active=eq.true&select=id');
+              recipients = all.map((p) => p.id).filter((id) => id !== s.created_by);
+            }
+          } catch (e) { console.error('schedule recipients', e.message); }
+
+          for (const uid of recipients) {
+            try {
+              await fetch(`${base}/.netlify/functions/coach`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'x-wios-service': svc },
+                body: JSON.stringify({ action: 'directive-fire', for_user: uid, directive: s.directive }),
+              });
+              report.coachSchedules = (report.coachSchedules || 0) + 1;
+            } catch (e) { console.error('schedule fire', uid, e.message); }
+          }
+        }
+      }
+    }
+
+
     if (et.dow === 1 && et.hhmm >= '10:00' && et.hhmm < '10:30') {
       const base = (env.URL || env.DEPLOY_PRIME_URL || '').replace(/\/$/, '');
       const svc = env.SUPABASE_SERVICE_KEY;
